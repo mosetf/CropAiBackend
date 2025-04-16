@@ -1,4 +1,13 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Use environment variables
+API_KEY = os.getenv("API_KEY")
+BASE_URL = os.getenv("BASE_URL")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,6 +18,8 @@ SECRET_KEY = 'django-insecure-*yb&jw_$oojubya%ate5j@vjix%c)vhvi+j1n15h72jtw9h=23
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+STATIC_URL = '/static/'
 
 
 # Application definition
@@ -98,8 +109,6 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
-
-STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
