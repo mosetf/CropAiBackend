@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Maize Yield Prediction</title>
+</head>
+<body>
+    <h2>Enter Crop Data for Prediction</h2>
+    <form action="/predict/" method="post">
+        {% csrf_token %}
+        <label>Rainfall (mm):</label>
+        <input type="number" name="rainfall" required><br>
+        
+        <label>Temperature (°C):</label>
+        <input type="number" name="temperature" required><br>
+        
+        <label>Soil pH:</label>
+        <input type="number" name="soil_pH" required><br>
+        
+        <input type="submit" value="Predict Yield">
+    </form>
+
+    {% if predicted_yield %}
+        <h3>Predicted Yield: {{ predicted_yield }} tons/ha</h3>
+    {% endif %}
+
+    {% if error %}
+        <h3 style="color: red;">Error: {{ error }}</h3>
+    {% endif %}
+</body>
+</html>
