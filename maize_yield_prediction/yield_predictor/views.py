@@ -3,16 +3,22 @@ import os
 import joblib
 import pandas as pd
 from django.http import JsonResponse
+from src import optimization
+from django.shortcuts import render
 
 # Get absolute path to the Django app directory
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(BASE_DIR, 'yield_predictor', 'maize_yield_kenya_model.pkl')
+
 
 # Load the trained Random Forest model from the correct location
 if os.path.exists(MODEL_PATH):
     model = joblib.load(MODEL_PATH)
 else:
     model = None  # Model is missing
+
+def landing_page(request):
+    return render(request, 'yield_predictor/landing.html')    
 
 @csrf_exempt
 def predict_yield(request):
@@ -42,3 +48,24 @@ def predict_yield(request):
 
     return JsonResponse({"message": "Use POST method to submit data."})
 
+def optimization_view(request):
+    # Load data
+    df = optimization.load_processed_data()
+
+    # Run optimization
+    harvest = optimization.recommend_harvest_schedule(df.copy(), rain_prob=0.3, temperature=26)
+    market = optimization.optimize_market_sales(df.copy())
+    pesticide = optimization.pesticide_recommendation(df.copy(), rain_forecast=0.7)
+
+    # Combine results
+    result_df = df.copy()
+    result_df['Harvest_Decision'] = harvest['Harvest_Decision']
+    result_df['Sell_Now'] = market['Sell_Now']
+    result_df['Reduce_Pesticide'] = pesticide['Reduce_Pesticide']
+
+    # Pass to template as dict
+    context = {
+        'results': result_df[['Year', 'Harvest_Decision', 'Sell_Now', 'Reduce_Pesticide']].head(20).to_dict('records')  # Limit for testing
+    }
+
+    return render(request, 'optimization_results.html', context)
