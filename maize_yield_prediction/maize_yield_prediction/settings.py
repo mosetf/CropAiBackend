@@ -67,7 +67,7 @@ LOGGING = {
     },
 }
 
-ACCOUNT_LOGOUT_ON_GET = False 
+ACCOUNT_LOGOUT_ON_GET = False # Ensures logout only happens via POST
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 
