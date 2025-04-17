@@ -18,6 +18,9 @@
                     <li><a href="#">Home</a></li>
                     <li><a href="#">How It Works</a></li>
                     <li><a href="#">Contact</a></li>
+                    <!-- Add login and signup links -->
+                    <li><a href="{% url 'account_login' %}">Login</a></li>
+                    <li><a href="{% url 'account_signup' %}">Sign Up</a></li>
                 </ul>
             </nav>
         </div>
@@ -74,7 +77,10 @@
         <div class="container">
             <h2>Ready to Farm Smarter?</h2>
             <p>Join hundreds of farmers who are making better decisions with data. Be part of the next agricultural revolution.</p>
-            <a href="#" class="cta-button">Get Started</a>
+            <!-- Link to signup page -->
+            <a href="{% url 'account_signup' %}" class="cta-button">Get Started</a>
+            <!-- Optional: Login link -->
+            <p>Already have an account? <a href="{% url 'account_login' %}">Login here</a></p>
         </div>
     </section>
     <!-- Footer Section -->
