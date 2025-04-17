@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+  <div class="card p-4">
+    <h2 class="mb-4">🌽 Predict Maize Yield</h2>
+
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" id="yieldForm">
+      {% csrf_token %}
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="location">Location</label>
+          <select name="location" class="form-select" required>
+            {% for loc in locations %}
+            <option value="{{ loc }}">{{ loc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="soil_moisture">Soil Moisture (%)</label>
+          <input type="number" class="form-control" name="soil_moisture" step="0.1" value="25" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="soil_ph">Soil pH</label>
+          <input type="number" class="form-control" name="soil_ph" step="0.1" value="6.0" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="organic_carbon">Organic Carbon (%)</label>
+          <input type="number" class="form-control" name="organic_carbon" step="0.1" value="1.5" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="fertilizer">Fertilizer (kg/ha)</label>
+          <input type="number" class="form-control" name="fertilizer" step="0.1" value="100" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="planting_date">Planting Date (Julian)</label>
+          <input type="number" class="form-control" name="planting_date" value="90" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="prev_yield">Previous Yield (tons/ha)</label>
+          <input type="number" class="form-control" name="prev_yield" step="0.1" value="3.5" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="market_price">Market Price (KES/ton)</label>
+          <input type="number" class="form-control" name="market_price" step="0.1" value="3500" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="labour_cost">Labour Cost (KES/ha)</label>
+          <input type="number" class="form-control" name="labour_cost" step="0.1" value="1000" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="storage_loss">Storage Loss (%)</label>
+          <input type="number" class="form-control" name="storage_loss" step="0.1" value="15" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success mt-3">Predict Yield</button>
+
+      <!-- Progress Bar -->
+      <div id="progressContainer">
+        <label class="form-label mt-3">⏳ Processing your prediction...</label>
+        <div class="progress">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"
+               style="width: 0%;" id="progressBar"></div>
+        </div>
+      </div>
+    </form>
+
+    {% if yield_pred %}
+    <div class="mt-5">
+      <h3>✅ Prediction Results</h3>
+      <ul class="list-group">
+        <li class="list-group-item">Predicted Yield: <strong>{{ yield_pred }} tons/ha</strong></li>
+        <li class="list-group-item">Optimal Harvest Day: <strong>{{ best_days }}</strong></li>
+        <li class="list-group-item">Estimated Net Profit: <strong>{{ best_profit }} KES/ha</strong></li>
+        <li class="list-group-item">Rainfall: {{ weather.Rainfall }} mm</li>
+        <li class="list-group-item">Temperature: {{ weather.Avg_Temperature }} °C</li>
+        <li class="list-group-item">Humidity: {{ weather.Humidity }} %</li>
+      </ul>
+
+      {% if weather.fallback %}
+      <div class="alert alert-warning mt-3">
+        ⚠️ The location you selected was not in our API-supported database. A fallback weather location was used.
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById('yieldForm');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+
+  form.addEventListener('submit', () => {
+    progressContainer.style.display = 'block';
+    let width = 0;
+    const interval = setInterval(() => {
+      if (width >= 100) {
+        clearInterval(interval);
+      } else {
+        width += 20;
+        progressBar.style.width = width + '%';
+      }
+    }, 300);
+  });
+</script>
+{% endblock %}
