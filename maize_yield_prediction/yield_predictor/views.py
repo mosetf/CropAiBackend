@@ -6,9 +6,11 @@ import requests
 from django.conf import settings
 import os
 import logging
+from django.contrib.auth.decorators import login_required
 
-# Create a logger for weather-related events
+# Creates a logger for weather-related events
 logger = logging.getLogger('weather')
+
 
 def get_weather_data(location="Eldoret"):
     location_coords = {
@@ -40,9 +42,9 @@ def get_weather_data(location="Eldoret"):
         if location in location_coords:
             lat = location_coords[location]['lat']
             lon = location_coords[location]['lon']
-            url = f"{settings.BASE_URL}?lat={lat}&lon={lon}&appid={settings.API_KEY}&units=metric"
+            url = f"{settings.BASE_URL}lat={lat}&lon={lon}&appid={settings.API_KEY}&units=metric"
         else:
-            url = f"{settings.BASE_URL}?q={location}&appid={settings.API_KEY}&units=metric"
+            url = f"{settings.BASE_URL}q={location}&appid={settings.API_KEY}&units=metric"
             used_fallback = True
 
         response = requests.get(url, timeout=5)
@@ -55,15 +57,25 @@ def get_weather_data(location="Eldoret"):
             'Humidity (%)': data['main']['humidity']
         }
 
+        # Log weather data to console
+        logger.info(
+            f"Weather data fetched for {location}: "
+            f"Rainfall={weather_data['Rainfall (mm)']} mm, "
+            f"Temperature={weather_data['Avg_Temperature (°C)']} °C, "
+            f"Humidity={weather_data['Humidity (%)']} %"
+        )
+
         return weather_data, used_fallback  #  Return two values
 
     except Exception as e:
         print(f"Weather API error: {e}")
+        logger.error(f"Weather API error for {location}: {e}")
         return None, used_fallback  # Also return fallback flag even on error
 
 def landing_page(request):
     return render(request, 'yield_predictor/landing.html')
 
+@login_required
 def predict_yield(request):
     # Rift Valley locations for dropdown
     locations = [
@@ -155,6 +167,7 @@ def predict_yield(request):
         })
 
     return render(request, 'yield_predictor/predict_yield.html', {'locations': locations})
+
 
 def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, days_range=range(90, 151)):
     profits = []
