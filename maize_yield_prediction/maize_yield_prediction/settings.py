@@ -67,6 +67,10 @@ LOGGING = {
     },
 }
 
+ACCOUNT_LOGOUT_ON_GET = False 
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
