@@ -8,9 +8,7 @@ import os
 import logging
 from django.contrib.auth.decorators import login_required
 
-# Creates a logger for weather-related events
 logger = logging.getLogger('weather')
-
 
 def get_weather_data(location="Eldoret"):
     location_coords = {
@@ -36,7 +34,7 @@ def get_weather_data(location="Eldoret"):
         "Bomet": {"lat": -0.7813, "lon": 35.3416}
     }
 
-    used_fallback = False  # track fallback usage
+    used_fallback = False
 
     try:
         if location in location_coords:
@@ -52,32 +50,31 @@ def get_weather_data(location="Eldoret"):
         data = response.json()
 
         weather_data = {
-            'Rainfall (mm)': data.get('rain', {}).get('1h', 0) * 24,
-            'Avg_Temperature (°C)': data['main']['temp'],
-            'Humidity (%)': data['main']['humidity']
+            'rainfall': data.get('rain', {}).get('1h', 0) * 24,  # approximate daily
+            'temperature': data['main']['temp'],
+            'humidity': data['main']['humidity']
         }
 
-        # Log weather data to console
         logger.info(
-            f"Weather data fetched for {location}: "
-            f"Rainfall={weather_data['Rainfall (mm)']} mm, "
-            f"Temperature={weather_data['Avg_Temperature (°C)']} °C, "
-            f"Humidity={weather_data['Humidity (%)']} %"
+            f"Weather fetched for {location}: "
+            f"rainfall={weather_data['rainfall']}mm, "
+            f"temp={weather_data['temperature']}°C, "
+            f"humidity={weather_data['humidity']}%"
         )
 
-        return weather_data, used_fallback  #  Return two values
+        return weather_data, used_fallback
 
     except Exception as e:
-        print(f"Weather API error: {e}")
         logger.error(f"Weather API error for {location}: {e}")
-        return None, used_fallback  # Also return fallback flag even on error
+        return None, used_fallback
+
 
 def landing_page(request):
     return render(request, 'yield_predictor/landing.html')
 
+
 @login_required
 def predict_yield(request):
-    # Rift Valley locations for dropdown
     locations = [
         "Nakuru", "Eldoret", "Kitale", "Naivasha", "Narok", "Kericho", "Kapsabet",
         "Kabarnet", "Iten", "Nyahururu", "Lake Nakuru", "Lake Naivasha", "Lake Baringo",
@@ -86,7 +83,6 @@ def predict_yield(request):
     ]
 
     if request.method == 'POST':
-        # Get form inputs
         location = request.POST.get('location', 'Eldoret')
         soil_moisture = float(request.POST.get('soil_moisture', 25))
         soil_ph = float(request.POST.get('soil_ph', 6.0))
@@ -98,7 +94,6 @@ def predict_yield(request):
         labour_cost = float(request.POST.get('labour_cost', 1000))
         storage_loss = float(request.POST.get('storage_loss', 15))
 
-        # Load model
         model_path = os.path.join(settings.BASE_DIR, 'models', 'rf_yield_model.pkl')
         try:
             with open(model_path, 'rb') as f:
@@ -106,23 +101,21 @@ def predict_yield(request):
         except FileNotFoundError:
             return render(request, 'yield_predictor/predict_yield.html', {
                 'locations': locations,
-                'error': 'Model file not found. Please contact the administrator.'
+                'error': 'Model file not found. Please contact admin.'
             })
 
-        # Fetch real-time weather
         weather, fallback_used = get_weather_data(location)
         if not weather:
             return render(request, 'yield_predictor/predict_yield.html', {
                 'locations': locations,
-                'error': 'Unable to fetch weather data. Please try again.'
+                'error': 'Weather data unavailable.'
             })
 
-        # Prepare input for model
         input_data = {
             'Year': 2025,
-            'Rainfall (mm)': weather['Rainfall (mm)'],
-            'Avg_Temperature (°C)': weather['Avg_Temperature (°C)'],
-            'Humidity (%)': weather['Humidity (%)'],
+            'Rainfall (mm)': weather['rainfall'],
+            'Avg_Temperature (°C)': weather['temperature'],
+            'Humidity (%)': weather['humidity'],
             'Soil_Moisture (%)': soil_moisture,
             'Soil_pH': soil_ph,
             'Organic_Carbon (%)': organic_carbon,
@@ -131,14 +124,11 @@ def predict_yield(request):
             'Prev_Yield (tons/ha)': prev_yield
         }
 
-        # One-hot encode location
-        for loc in locations[1:]:  # Skip first to avoid dummy variable trap
+        for loc in locations[1:]:
             input_data[f'Location_{loc}'] = 1 if loc == location else 0
 
-        # Create DataFrame
         input_df = pd.DataFrame([input_data])
 
-        # Ensure columns match training data
         try:
             model_columns = model.feature_names_in_
             input_df = input_df.reindex(columns=model_columns, fill_value=0)
@@ -148,22 +138,16 @@ def predict_yield(request):
                 'error': 'Model is not properly configured.'
             })
 
-        # Predict yield
         yield_pred = model.predict(input_df)[0]
+        best_days, best_profit = optimize_harvest(yield_pred, market_price, labour_cost, storage_loss)
 
-        # Optimize harvest timing
-        best_days, best_profit = optimize_harvest(
-            yield_pred, market_price, labour_cost, storage_loss
-        )
-
-        # Render results
         return render(request, 'yield_predictor/predict_yield.html', {
             'locations': locations,
             'yield_pred': round(yield_pred, 2),
             'best_days': best_days,
             'best_profit': round(best_profit, 2),
             'weather': weather,
-            'fallback_used': fallback_used # pass flag to template
+            'fallback_used': fallback_used
         })
 
     return render(request, 'yield_predictor/predict_yield.html', {'locations': locations})
@@ -172,8 +156,8 @@ def predict_yield(request):
 def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, days_range=range(90, 151)):
     profits = []
     for days in days_range:
-        adjusted_loss = storage_loss + (days - 90) * 0.1  # Increase loss by 0.1% per day
-        adjusted_loss = min(adjusted_loss, 30)  # Cap at 30%
+        adjusted_loss = storage_loss + (days - 90) * 0.1
+        adjusted_loss = min(adjusted_loss, 30)
         profit = (yield_pred * market_price * (1 - adjusted_loss / 100) - labour_cost)
         profits.append((days, profit))
     best_days, best_profit = max(profits, key=lambda x: x[1])
