@@ -21,6 +21,7 @@
             👤 {{ user.username }}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'dashboard' %}">📊 My Dashboard</a></li>
             <li><a class="dropdown-item" href="{% url 'predict_yield' %}">Predict Yield</a></li>
             <li><a class="dropdown-item" href="#">Profile</a></li>
             <li><a class="dropdown-item" href="#">About</a></li>
