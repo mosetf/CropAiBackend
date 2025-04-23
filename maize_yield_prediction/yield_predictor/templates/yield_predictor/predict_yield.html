@@ -43,8 +43,8 @@
         </div>
 
         <div class="col-md-6 mb-3">
-          <label for="planting_date">Planting Date (Julian)</label>
-          <input type="number" class="form-control" name="planting_date" value="90" required>
+          <label for="planting_date">Planting Date:</label>
+          <input type="date" name="planting_date" required>
         </div>
 
         <div class="col-md-6 mb-3">
@@ -85,11 +85,13 @@
       <h3>✅ Prediction Results</h3>
       <ul class="list-group">
         <li class="list-group-item">Predicted Yield: <strong>{{ yield_pred }} tons/ha</strong></li>
-        <li class="list-group-item">Optimal Harvest Day: <strong>{{ best_days }}</strong></li>
+        <li class="list-group-item">
+          Optimal Harvest Window: <strong>{{ best_days }}</strong>
+        </li>        
         <li class="list-group-item">Estimated Net Profit: <strong>{{ best_profit }} KES/ha</strong></li>
-        <li class="list-group-item">Rainfall: {{ weather.Rainfall }} mm</li>
-        <li class="list-group-item">Temperature: {{ weather.Avg_Temperature }} °C</li>
-        <li class="list-group-item">Humidity: {{ weather.Humidity }} %</li>
+        <li class="list-group-item">Rainfall: {{ weather.rainfall }} mm</li>
+        <li class="list-group-item">Temperature: {{ weather.temperature}} °C</li>
+        <li class="list-group-item">Humidity: {{ weather.humidity }} %</li>
       </ul>
 
       {% if weather.fallback %}
