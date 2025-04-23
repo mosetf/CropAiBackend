@@ -87,9 +87,9 @@
         <li class="list-group-item">Predicted Yield: <strong>{{ yield_pred }} tons/ha</strong></li>
         <li class="list-group-item">Optimal Harvest Day: <strong>{{ best_days }}</strong></li>
         <li class="list-group-item">Estimated Net Profit: <strong>{{ best_profit }} KES/ha</strong></li>
-        <li class="list-group-item">Rainfall: {{ weather.Rainfall }} mm</li>
-        <li class="list-group-item">Temperature: {{ weather.Avg_Temperature }} °C</li>
-        <li class="list-group-item">Humidity: {{ weather.Humidity }} %</li>
+        <li class="list-group-item">Rainfall: {{ weather.rainfall }} mm</li>
+        <li class="list-group-item">Temperature: {{ weather.temperature }} °C</li>
+        <li class="list-group-item">Humidity: {{ weather.humidity }} %</li>               
       </ul>
 
       {% if weather.fallback %}
