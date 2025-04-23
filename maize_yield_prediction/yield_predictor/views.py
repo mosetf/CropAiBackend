@@ -8,6 +8,7 @@ import os
 import logging
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
+from .models import YieldPrediction
 
 logger = logging.getLogger('weather')
 
@@ -72,6 +73,11 @@ def get_weather_data(location="Eldoret"):
 
 def landing_page(request):
     return render(request, 'yield_predictor/landing.html')
+
+@login_required
+def dashboard(request):
+    predictions = YieldPrediction.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'yield_predictor/dashboard.html', {'predictions': predictions})
 
 
 @login_required
@@ -146,6 +152,18 @@ def predict_yield(request):
         yield_pred = model.predict(input_df)[0]
         best_days, best_profit = optimize_harvest(
             yield_pred, market_price, labour_cost, storage_loss, planting_date
+        )
+        
+        YieldPrediction.objects.create(
+            user=request.user,
+            location=location,
+            planting_date=planting_date,
+            predicted_yield=round(yield_pred, 2),
+            harvest_window=best_days,
+            net_profit=round(best_profit, 2),
+            rainfall=weather['rainfall'],
+            temperature=weather['temperature'],
+            humidity=weather['humidity']
         )
 
 
