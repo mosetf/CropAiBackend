@@ -130,7 +130,6 @@ def predict_yield(request):
         }
 
         for loc in locations[1:]:
-        for loc in locations[1:]:
             input_data[f'Location_{loc}'] = 1 if loc == location else 0
 
         input_df = pd.DataFrame([input_data])
@@ -145,7 +144,10 @@ def predict_yield(request):
             })
 
         yield_pred = model.predict(input_df)[0]
-        best_days, best_profit = optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, planting_date)
+        best_days, best_profit = optimize_harvest(
+            yield_pred, market_price, labour_cost, storage_loss, planting_date
+        )
+
 
         return render(request, 'yield_predictor/predict_yield.html', {
             'locations': locations,
@@ -153,7 +155,6 @@ def predict_yield(request):
             'best_days': best_days,
             'best_profit': round(best_profit, 2),
             'weather': weather,
-            'fallback_used': fallback_used
             'fallback_used': fallback_used
         })
 
@@ -163,8 +164,6 @@ def predict_yield(request):
 def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, planting_date, days_range=range(90, 151)):
     profits = []
     for days in days_range:
-        adjusted_loss = storage_loss + (days - 90) * 0.1
-        adjusted_loss = min(adjusted_loss, 30)
         adjusted_loss = storage_loss + (days - 90) * 0.1
         adjusted_loss = min(adjusted_loss, 30)
         profit = (yield_pred * market_price * (1 - adjusted_loss / 100) - labour_cost)
