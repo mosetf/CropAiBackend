@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load extras %}
+
+{% block content %}
+<div class="container">
+    <h2>🌾 My Crop Dashboard</h2>
+
+    {% if predictions %}
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Yield</th>
+                <th>Profit</th>
+                <th>Harvest Window</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in predictions %}
+            <tr>
+                <td>{{ p.created_at|date:"M d, Y" }}</td>
+                <td>{{ p.location }}</td>
+                <td>{{ p.predicted_yield }} tons/ha</td>
+                <td>{{ p.net_profit }} KES/ha</td>
+                <td>{{ p.harvest_window }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Rainfall Chart -->
+    <h4 class="mt-5">🌧️ Rainfall Overview</h4>
+    <canvas id="rainfallChart" height="100"></canvas>
+
+    {% else %}
+    <p class="mt-4">No predictions yet. Submit your first crop yield prediction!</p>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<canvas id="rainfallChart" height="100"></canvas>
+
+{% load extras %}
+
+<script>
+  const labels = {{ predictions|pluck:"created_at"|safe }};
+  const rainfallData = {{ predictions|pluck:"rainfall"|safe }};
+
+  const ctx = document.getElementById('rainfallChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.map(date => new Date(date).toLocaleDateString()),  // format dates
+      datasets: [{
+        label: 'Rainfall (mm)',
+        data: rainfallData,
+        backgroundColor: 'rgba(54, 162, 235, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+</script>
+
+{% endblock %}
