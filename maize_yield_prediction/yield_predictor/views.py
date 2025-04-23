@@ -7,6 +7,7 @@ from django.conf import settings
 import os
 import logging
 from django.contrib.auth.decorators import login_required
+from datetime import datetime, timedelta
 
 # Creates a logger for weather-related events
 logger = logging.getLogger('weather')
@@ -77,7 +78,6 @@ def landing_page(request):
 
 @login_required
 def predict_yield(request):
-    # Rift Valley locations for dropdown
     locations = [
         "Nakuru", "Eldoret", "Kitale", "Naivasha", "Narok", "Kericho", "Kapsabet",
         "Kabarnet", "Iten", "Nyahururu", "Lake Nakuru", "Lake Naivasha", "Lake Baringo",
@@ -92,7 +92,9 @@ def predict_yield(request):
         soil_ph = float(request.POST.get('soil_ph', 6.0))
         organic_carbon = float(request.POST.get('organic_carbon', 1.5))
         fertilizer = float(request.POST.get('fertilizer', 100))
-        planting_date = int(request.POST.get('planting_date', 90))
+        planting_date_str = request.POST.get('planting_date')
+        planting_date = datetime.strptime(planting_date_str, "%Y-%m-%d")
+        planting_day = planting_date.timetuple().tm_yday  # Convert to Julian day
         prev_yield = float(request.POST.get('prev_yield', 3.5))
         market_price = float(request.POST.get('market_price', 3500))
         labour_cost = float(request.POST.get('labour_cost', 1000))
@@ -109,7 +111,7 @@ def predict_yield(request):
                 'error': 'Model file not found. Please contact the administrator.'
             })
 
-        # Fetch real-time weather
+        # Fetch weather data
         weather, fallback_used = get_weather_data(location)
         if not weather:
             return render(request, 'yield_predictor/predict_yield.html', {
@@ -117,7 +119,7 @@ def predict_yield(request):
                 'error': 'Unable to fetch weather data. Please try again.'
             })
 
-        # Prepare input for model
+        # Prepare input data
         input_data = {
             'Year': 2025,
             'Rainfall (mm)': weather['Rainfall (mm)'],
@@ -127,18 +129,15 @@ def predict_yield(request):
             'Soil_pH': soil_ph,
             'Organic_Carbon (%)': organic_carbon,
             'Fertilizer (kg/ha)': fertilizer,
-            'Planting_Date': planting_date,
+            'Planting_Date': planting_day,  # <- Julian day
             'Prev_Yield (tons/ha)': prev_yield
         }
 
-        # One-hot encode location
-        for loc in locations[1:]:  # Skip first to avoid dummy variable trap
+        for loc in locations[1:]:
             input_data[f'Location_{loc}'] = 1 if loc == location else 0
 
-        # Create DataFrame
         input_df = pd.DataFrame([input_data])
 
-        # Ensure columns match training data
         try:
             model_columns = model.feature_names_in_
             input_df = input_df.reindex(columns=model_columns, fill_value=0)
@@ -148,33 +147,36 @@ def predict_yield(request):
                 'error': 'Model is not properly configured.'
             })
 
-        # Predict yield
         yield_pred = model.predict(input_df)[0]
+        best_days, best_profit = optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, planting_date)
 
-        # Optimize harvest timing
-        best_days, best_profit = optimize_harvest(
-            yield_pred, market_price, labour_cost, storage_loss
-        )
-
-        # Render results
         return render(request, 'yield_predictor/predict_yield.html', {
             'locations': locations,
             'yield_pred': round(yield_pred, 2),
             'best_days': best_days,
             'best_profit': round(best_profit, 2),
             'weather': weather,
-            'fallback_used': fallback_used # pass flag to template
+            'fallback_used': fallback_used
         })
 
     return render(request, 'yield_predictor/predict_yield.html', {'locations': locations})
 
 
-def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, days_range=range(90, 151)):
+def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, planting_date, days_range=range(90, 151)):
     profits = []
     for days in days_range:
-        adjusted_loss = storage_loss + (days - 90) * 0.1  # Increase loss by 0.1% per day
-        adjusted_loss = min(adjusted_loss, 30)  # Cap at 30%
+        adjusted_loss = storage_loss + (days - 90) * 0.1
+        adjusted_loss = min(adjusted_loss, 30)
         profit = (yield_pred * market_price * (1 - adjusted_loss / 100) - labour_cost)
-        profits.append((days, profit))
-    best_days, best_profit = max(profits, key=lambda x: x[1])
-    return best_days, best_profit
+        harvest_date = planting_date + timedelta(days=days)
+        profits.append((harvest_date, profit))
+
+    # Find the best harvest date by max profit
+    best_date, best_profit = max(profits, key=lambda x: x[1])
+
+    # Define a window of ±7 days for flexibility
+    start_date = (best_date - timedelta(days=3)).strftime("%d %B %Y")
+    end_date = (best_date + timedelta(days=3)).strftime("%d %B %Y")
+    harvest_window = f"{start_date} to {end_date}"
+
+    return harvest_window, best_profit
