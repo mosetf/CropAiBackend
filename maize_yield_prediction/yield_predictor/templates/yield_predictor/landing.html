@@ -3,97 +3,206 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI-Powered Maize Yield Optimization</title>
-    <link rel="stylesheet" href="{% static 'css/landing.css' %}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MaizeAI: AI-powered maize yield optimization for smarter farming and higher harvests.">
+    <meta name="keywords" content="MaizeAI, AI farming, maize yield, agriculture technology, Kenyan farmers">
+    <title>MaizeAI - AI-Powered Maize Yield Optimization</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+    <link rel="icon" type="image/png" href="https://cdn.pixabay.com/photo/2016/11/29/05/08/corn-1867315_1280.jpg">
+    <style>
+        .bg-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        .fade-in {
+            animation: fadeIn 1s ease-in;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .cta-button:hover {
+            transform: scale(1.05);
+            transition: transform 0.3s ease;
+        }
+        .sticky-cta {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .hamburger {
+            display: none;
+            cursor: pointer;
+        }
+        .hamburger div {
+            width: 25px;
+            height: 3px;
+            background-color: white;
+            margin: 5px;
+        }
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                width: 100%;
+                position: absolute;
+                top: 60px;
+                left: 0;
+                background-color: #1a4733;
+                padding: 20px;
+            }
+            .nav-links.active {
+                display: flex;
+            }
+            .hamburger {
+                display: block;
+            }
+        }
+    </style>
 </head>
-<body>
-
+<body class="bg-gray-100 font-sans">
     <!-- Header / Navbar -->
-    <header class="navbar">
-        <div class="container">
-            <h1 class="logo">MaizeAI</h1>
-            <nav>
-                <ul class="nav-links">
-                    <li><a href="#">Home</a></li>
-                    <li><a href="#">How It Works</a></li>
-                    <li><a href="#">Contact</a></li>
-                    <!-- Add login and signup links -->
-                    <li><a href="{% url 'account_login' %}">Login</a></li>
-                    <li><a href="{% url 'account_signup' %}">Sign Up</a></li>
-                </ul>
+    <header class="bg-green-800 text-white py-4 sticky top-0 z-50 shadow-md">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">MaizeAI</h1>
+            <div class="hamburger md:hidden" onclick="toggleMenu()">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+            <nav class="nav-links md:flex space-x-6" aria-label="Main navigation">
+                <a href="#" class="hover:text-green-300">Home</a>
+                <a href="#features" class="hover:text-green-300">How It Works</a>
+                <a href="#contact" class="hover:text-green-300">Contact</a>
+                <a href="{% url 'account_login' %}" class="hover:text-green-300">Login</a>
+                <a href="{% url 'account_signup' %}" class="bg-green-600 px-4 py-2 rounded-lg hover:bg-green-700">Sign Up</a>
             </nav>
         </div>
     </header>
+
     <!-- Hero Section with Video Background -->
-    <section class="hero">
+    <section class="relative h-screen flex items-center justify-center text-center text-white">
         <video autoplay muted loop class="bg-video">
-            <source src="https://www.w3schools.com/howto/rain.mp4" type="video/mp4">
+            <source src="https://videos.pexels.com/video-files/2758322/2758322-uhd_2560_1440_30fps.mp4" type="video/mp4">
             Your browser does not support HTML5 video.
         </video>
-        <div class="hero-content">
-            <h2>Boost Your Maize Harvest with AI</h2>
-            <p>Smarter decisions, better planning, higher yields.</p>
-            <a href="#" class="cta-button">Learn More</a>
+        <div class="hero-content bg-black bg-opacity-50 p-8 rounded-lg fade-in">
+            <h2 class="text-4xl md:text-5xl font-bold mb-4">Boost Your Maize Harvest with AI</h2>
+            <p class="text-lg md:text-xl mb-6">Smarter decisions, better planning, higher yields.</p>
+            <a href="#features" class="cta-button bg-green-600 text-white px-6 py-3 rounded-lg text-lg hover:bg-green-700">Learn More</a>
         </div>
     </section>
+
     <!-- Features Section -->
-    <section class="features">
-        <div class="container">
-            <h2>How This Helps You</h2>
-            <div class="feature-grid">
-                <div class="feature">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2900/2900496.png" alt="Prediction Icon">
-                    <h3>AI Yield Prediction</h3>
-                    <p>Get forecasts based on real-time weather, soil, and planting data — to plan smarter harvests.</p>
+    <section id="features" class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-12 fade-in">How MaizeAI Helps You</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="feature p-6 bg-gray-100 rounded-lg shadow-lg text-center fade-in">
+                    <img src="https://cdn-icons-png.flaticon.com/512/2900/2900496.png" alt="Prediction Icon" class="w-16 h-16 mx-auto mb-4">
+                    <h3 class="text-xl font-semibold mb-2">AI Yield Prediction</h3>
+                    <p>Forecast yields with real-time weather, soil, and planting data for smarter harvests.</p>
                 </div>
-                <div class="feature">
-                    <img src="https://cdn-icons-png.flaticon.com/512/1114/1114605.png" alt="Optimization Icon">
-                    <h3>Harvest Optimization</h3>
-                    <p>Know the best time to harvest and allocate your fertilizer, labor, and water more efficiently.</p>
+                <div class="feature p-6 bg-gray-100 rounded-lg shadow-lg text-center fade-in">
+                    <img src="https://cdn-icons-png.flaticon.com/512/1114/1114605.png" alt="Optimization Icon" class="w-16 h-16 mx-auto mb-4">
+                    <h3 class="text-xl font-semibold mb-2">Harvest Optimization</h3>
+                    <p>Optimize fertilizer, labor, and water use with precise harvest timing insights.</p>
                 </div>
-                <div class="feature">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3845/3845731.png" alt="Weather Icon">
-                    <h3>Weather-Aware Decisions</h3>
-                    <p>Plan based on upcoming weather patterns to avoid losses from droughts or floods.</p>
+                <div class="feature p-6 bg-gray-100 rounded-lg shadow-lg text-center fade-in">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3845/3845731.png" alt="Weather Icon" class="w-16 h-16 mx-auto mb-4">
+                    <h3 class="text-xl font-semibold mb-2">Weather-Aware Decisions</h3>
+                    <p>Plan around weather patterns to minimize losses from droughts or floods.</p>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-16 bg-green-50">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-12 fade-in">What Farmers Are Saying</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="testimonial p-6 bg-white rounded-lg shadow-lg fade-in">
+                    <p class="italic mb-4">"MaizeAI helped me double my yield last season by predicting the best planting time!"</p>
+                    <p class="font-semibold">– Jane M., Smallholder Farmer</p>
+                </div>
+                <div class="testimonial p-6 bg-white rounded-lg shadow-lg fade-in">
+                    <p class="italic mb-4">"The weather insights saved my crops from unexpected rains. Highly recommend!"</p>
+                    <p class="font-semibold">– Peter K., Maize Farmer</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- About Section -->
-    <section class="about">
-        <div class="container">
-            <h2>Why This Matters</h2>
-            <p>
-                Many smallholder farmers face unpredictable yields due to changing weather patterns, poor soil data, or lack of access to agricultural insights.
-                <br><br>
-                Our AI-powered tool empowers you with data-driven predictions and actionable advice — so you can increase productivity, reduce waste, and earn more from your farm.
-            </p>
-            <img src="https://cdn.pixabay.com/photo/2016/11/29/05/08/agriculture-1867315_1280.jpg" alt="Farmer in field">
+    <section class="py-16 bg-gray-100">
+        <div class="container mx-auto px-4 flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 mb-8 md:mb-0 fade-in">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Why MaizeAI Matters</h2>
+                <p class="text-lg">
+                    Smallholder farmers face unpredictable yields due to changing weather, poor soil data, and limited insights.
+                    MaizeAI empowers you with AI-driven predictions and actionable advice to boost productivity, reduce waste, and grow your income.
+                </p>
+            </div>
+            <img src="https://cdn.pixabay.com/photo/2016/11/29/05/08/agriculture-1867315_1280.jpg" alt="Farmer in maize field" class="md:w-1/2 rounded-lg shadow-lg fade-in">
         </div>
     </section>
+
+    <!-- Newsletter Signup Section -->
+    <section class="py-16 bg-green-600 text-white">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-4 fade-in">Stay Updated with MaizeAI</h2>
+            <p class="text-lg mb-6">Subscribe to our newsletter for farming tips, updates, and exclusive offers.</p>
+            <div class="max-w-md mx-auto">
+                <input type="email" placeholder="Enter your email" class="w-full p-3 rounded-lg mb-4 text-gray-800" aria-label="Email for newsletter">
+                <button class="cta-button bg-white text-green-600 px-6 py-3 rounded-lg hover:bg-gray-200">Subscribe</button>
+            </div>
+        </div>
+    </section>
+
     <!-- Call to Action Section -->
-    <section class="cta">
-        <div class="container">
-            <h2>Ready to Farm Smarter?</h2>
-            <p>Join hundreds of farmers who are making better decisions with data. Be part of the next agricultural revolution.</p>
-            <!-- Link to signup page -->
-            <a href="{% url 'account_signup' %}" class="cta-button">Get Started</a>
-            <!-- Optional: Login link -->
-            <p>Already have an account? <a href="{% url 'account_login' %}">Login here</a></p>
+    <section class="py-16 bg-white text-center">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4 fade-in">Ready to Farm Smarter?</h2>
+            <p class="text-lg mb-6">Join hundreds of farmers making data-driven decisions with MaizeAI.</p>
+            <a href="{% url 'account_signup' %}" class="cta-button bg-green-600 text-white px-6 py-3 rounded-lg text-lg hover:bg-green-700">Get Started</a>
+            <p class="mt-4">Already have an account? <a href="{% url 'account_login' %}" class="text-green-600 hover:underline">Login here</a></p>
         </div>
     </section>
+
+    <!-- Sticky CTA Button -->
+    <a href="{% url 'account_signup' %}" class="sticky-cta cta-button bg-green-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-green-700">Try MaizeAI Now</a>
+
     <!-- Footer Section -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2025 AI Maize Optimization Platform. All rights reserved.</p>
-            <p>Made with ❤️ for Kenyan farmers.</p>
-            <div class="social-links">
-                <a href="#">Facebook</a> |
-                <a href="#">Twitter</a> |
-                <a href="#">Instagram</a>
+    <footer class="bg-green-800 text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="mb-2">© 2025 MaizeAI. All rights reserved.</p>
+            <p class="mb-4">Made with ❤️ for Kenyan farmers.</p>
+            <div class="flex justify-center space-x-4 mb-4">
+                <a href="#" class="hover:text-green-300">Facebook</a>
+                <a href="#" class="hover:text-green-300">Twitter</a>
+                <a href="#" class="hover:text-green-300">Instagram</a>
+            </div>
+            <div class="flex justify-center space-x-4">
+                <a href="#features" class="hover:text-green-300">Features</a>
+                <a href="#contact" class="hover:text-green-300">Contact</a>
+                <a href="mailto:support@maizeai.com" class="hover:text-green-300">support@maizeai.com</a>
             </div>
         </div>
     </footer>
 
-
+    <script>
+        function toggleMenu() {
+            const nav = document.querySelector('.nav-links');
+            nav.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>
