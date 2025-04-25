@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
+{% block title %}Predict Maize Yield{% endblock %}
 {% block content %}
 <div class="container">
   <div class="card p-4">
@@ -80,13 +83,12 @@
         <button type="submit" class="btn btn-success mt-3">Predict Yield</button>
 
         <!-- Progress Bar -->
-        <div id="progressContainer">
+        <div id="progressContainer" style="display: none;">
           <label class="form-label mt-3">⏳ Processing your prediction...</label>
           <div class="progress">
-            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"
-              style="width: 0%;" id="progressBar"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" id="progressBar"></div>
           </div>
-        </div>
+      </div>
     </form>
 
     {% if yield_pred %}
