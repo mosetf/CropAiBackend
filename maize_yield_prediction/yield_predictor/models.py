@@ -12,6 +12,7 @@ class YieldPrediction(models.Model):
     temperature = models.FloatField()
     humidity = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
+    fallback_used = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} - {self.location} ({self.planting_date})"
