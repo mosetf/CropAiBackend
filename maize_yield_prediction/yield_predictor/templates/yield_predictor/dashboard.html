@@ -1,71 +1,272 @@
 {% extends 'base.html' %}
-{% load extras %}
+{% load static extras %}
+
+{% block title %}Crop Dashboard{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>🌾 My Crop Dashboard</h2>
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-seedling"></i> My Crop Dashboard</h2>
+        </a>
+    </div>
 
     {% if predictions %}
-    <table class="table table-striped mt-4">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Location</th>
-                <th>Yield</th>
-                <th>Profit</th>
-                <th>Harvest Window</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in predictions %}
-            <tr>
-                <td>{{ p.created_at|date:"M d, Y" }}</td>
-                <td>{{ p.location }}</td>
-                <td>{{ p.predicted_yield }} tons/ha</td>
-                <td>{{ p.net_profit }} KES/ha</td>
-                <td>{{ p.harvest_window }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Summary Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Prediction Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h6>Average Yield</h6>
+                    <p class="fw-bold text-success">{{ predictions|avg:'predicted_yield'|floatformat:2 }} tons/ha</p>
+                </div>
+                <div class="col-md-4">
+                    <h6>Average Profit</h6>
+                    <p class="fw-bold text-primary">{{ predictions|avg:'net_profit'|floatformat:0 }} KES/ha</p>
+                </div>
+                <div class="col-md-4">
+                    <h6>Average Rainfall</h6>
+                    <p class="fw-bold text-info">{{ predictions|avg:'rainfall'|floatformat:0 }} mm</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <!-- Rainfall Chart -->
-    <h4 class="mt-5">🌧️ Rainfall Overview</h4>
-    <canvas id="rainfallChart" height="100"></canvas>
+    <!-- Filter and Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-table"></i> Prediction History</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="locationFilter" class="form-label">Filter by Location:</label>
+                <select id="locationFilter" class="form-select w-auto">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                        <option value="{{ loc }}">{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <table id="predictionsTable" class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th data-bs-toggle="tooltip" title="Date of prediction">Date</th>
+                        <th data-bs-toggle="tooltip" title="Selected location">Location</th>
+                        <th data-bs-toggle="tooltip" title="Predicted maize yield">Yield</th>
+                        <th data-bs-toggle="tooltip" title="Estimated net profit">Profit</th>
+                        <th data-bs-toggle="tooltip" title="Optimal harvest window">Harvest Window</th>
+                        <th data-bs-toggle="tooltip" title="Rainfall used for prediction">Rainfall</th>
+                        <th data-bs-toggle="tooltip" title="Temperature used">Temperature</th>
+                        <th data-bs-toggle="tooltip" title="Humidity used">Humidity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in predictions %}
+                        <td>{{ p.created_at|date:"M d, Y" }}</td>
+                        <td>{{ p.location }}{% if p.fallback_used %} <span class="badge bg-warning">Fallback</span>{% endif %}</td>
+                        <td>{{ p.predicted_yield|floatformat:2 }} tons/ha</td>
+                        <td>{{ p.net_profit|floatformat:0 }} KES/ha</td>
+                        <td>{{ p.harvest_window }}</td>
+                        <td>{{ p.rainfall|floatformat:0 }} mm</td>
+                        <td>{{ p.temperature|floatformat:1 }} °C</td>
+                        <td>{{ p.humidity|floatformat:0 }} %</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
+    <!-- Charts -->
+    <div class="row">
+        <!-- Rainfall Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-cloud-rain"></i> Rainfall Overview</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="rainfallChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Profit Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Profit Trends</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
     {% else %}
-    <p class="mt-4">No predictions yet. Submit your first crop yield prediction!</p>
+    <div class="alert alert-info text-center">
+        <p>No predictions yet.Submit your first crop yield prediction!</a></p>
+    </div>
     {% endif %}
 </div>
 
+<!-- External Libraries -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<canvas id="rainfallChart" height="100"></canvas>
-
-{% load extras %}
-
 <script>
-  const labels = {{ predictions|pluck:"created_at"|safe }};
-  const rainfallData = {{ predictions|pluck:"rainfall"|safe }};
+// Initialize DataTables
+$(document).ready(function() {
+    const table = $('#predictionsTable').DataTable({
+        pageLength: 10,
+        order: [[0, 'desc']],
+        language: {
+            search: "Search predictions:"
+        }
+    });
 
-  const ctx = document.getElementById('rainfallChart').getContext('2d');
-  new Chart(ctx, {
+    // Location filter
+    $('#locationFilter').on('change', function() {
+        table.column(1).search(this.value).draw();
+    });
+
+    // Clickable rows
+    $('#predictionsTable tbody').on('click', 'tr', function() {
+        const url = $(this).data('href');
+        if (url) window.location.href = url;
+    });
+
+    // Enable Bootstrap tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+
+// Rainfall Chart
+const rainfallCtx = document.getElementById('rainfallChart').getContext('2d');
+new Chart(rainfallCtx, {
     type: 'bar',
     data: {
-      labels: labels.map(date => new Date(date).toLocaleDateString()),  // format dates
-      datasets: [{
-        label: 'Rainfall (mm)',
-        data: rainfallData,
-        backgroundColor: 'rgba(54, 162, 235, 0.7)'
-      }]
+        labels: {{ predictions|pluck:"created_at"|safe }}.map(iso => new Date(iso).toLocaleDateString()),
+        datasets: [{
+            label: 'Rainfall (mm)',
+            data: {{ predictions|pluck:"rainfall"|safe }},
+            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true },
+            tooltip: { enabled: true }
+        },
+        scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Rainfall (mm)' } }
+        }
+    }
+});
+
+// Profit Chart
+const profitCtx = document.getElementById('profitChart').getContext('2d');
+new Chart(profitCtx, {
+    type: 'line',
+    data: {
+        labels: {{ predictions|pluck:"created_at"|safe }}.map(iso => new Date(iso).toLocaleDateString()),
+        datasets: [{
+            label: 'Net Profit (KES/ha)',
+            data: {{ predictions|pluck:"net_profit"|safe }},
+            borderColor: 'rgba(40, 167, 69, 1)',
+            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true },
+            tooltip: { enabled: true }
+        },
+        scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Profit (KES/ha)' } }
+        }
+    }
+});
+</script>
+
+<canvas id="forecastChart" height="100"></canvas>
+
+<script>
+  const forecastLabels = {{ forecast|pluck:"datetime"|safe }}.map(dt => new Date(dt).toLocaleString());
+  const forecastRain = {{ forecast|pluck:"rain"|safe }};
+  const forecastTemp = {{ forecast|pluck:"temperature"|safe }};
+  const forecastHumidity = {{ forecast|pluck:"humidity"|safe }};
+
+  new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels: forecastLabels,
+      datasets: [
+        {
+          label: 'Rainfall (mm)',
+          data: forecastRain,
+          borderColor: 'rgba(0, 123, 255, 1)',
+          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          fill: true,
+          tension: 0.3
+        },
+        {
+          label: 'Temperature (°C)',
+          data: forecastTemp,
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          fill: false,
+          tension: 0.3
+        },
+        {
+          label: 'Humidity (%)',
+          data: forecastHumidity,
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.2)',
+          fill: false,
+          tension: 0.3
+        }
+      ]
     },
     options: {
       responsive: true,
+      plugins: {
+        tooltip: { enabled: true },
+        legend: { display: true }
+      },
       scales: {
-        y: { beginAtZero: true }
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: "Value" }
+        },
+        x: {
+          ticks: { maxTicksLimit: 12 }
+        }
       }
     }
   });
 </script>
+
+
+
+<style>
+#predictionsTable tr:hover {
+    cursor: pointer;
+    background-color: #f1f1f1;
+}
+.card-header {
+    font-weight: bold;
+}
+</style>
 
 {% endblock %}
