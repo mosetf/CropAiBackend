@@ -1,4 +1,5 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 import pandas as pd
 import numpy as np
 import pickle
@@ -6,33 +7,14 @@ import requests
 from django.conf import settings
 import os
 import logging
-from django.contrib.auth.decorators import login_required
+from datetime import datetime, timedelta
+from .models import YieldPrediction
+from .utils.weather_utils import get_forecast_data, location_coords
 
 logger = logging.getLogger('weather')
 
+
 def get_weather_data(location="Eldoret"):
-    location_coords = {
-        "Nakuru": {"lat": -0.3031, "lon": 36.0800},
-        "Eldoret": {"lat": 0.5143, "lon": 35.2698},
-        "Kitale": {"lat": 1.0157, "lon": 35.0062},
-        "Naivasha": {"lat": -0.7072, "lon": 36.4319},
-        "Narok": {"lat": -1.0878, "lon": 35.8711},
-        "Kericho": {"lat": -0.3689, "lon": 35.2831},
-        "Kapsabet": {"lat": 0.2039, "lon": 35.1053},
-        "Kabarnet": {"lat": 0.4919, "lon": 35.7434},
-        "Iten": {"lat": 0.6703, "lon": 35.5081},
-        "Nyahururu": {"lat": 0.0421, "lon": 36.3673},
-        "Lake Nakuru": {"lat": -0.3031, "lon": 36.0800},
-        "Lake Naivasha": {"lat": -0.7072, "lon": 36.4319},
-        "Lake Baringo": {"lat": 0.6400, "lon": 36.0800},
-        "Lake Bogoria": {"lat": 0.2500, "lon": 36.1000},
-        "Lake Elementaita": {"lat": -0.4500, "lon": 36.2500},
-        "Kerio Valley": {"lat": 0.6000, "lon": 35.6000},
-        "Mau Escarpment": {"lat": -0.6000, "lon": 35.7500},
-        "Tugen Hills": {"lat": 0.5000, "lon": 35.9000},
-        "Cherangani Hills": {"lat": 1.1000, "lon": 35.4500},
-        "Bomet": {"lat": -0.7813, "lon": 35.3416}
-    }
 
     used_fallback = False
 
@@ -66,11 +48,46 @@ def get_weather_data(location="Eldoret"):
 
     except Exception as e:
         logger.error(f"Weather API error for {location}: {e}")
-        return None, used_fallback
-
+        weather_data = {
+            'rainfall': 800,
+            'temperature': 20,
+            'humidity': 70
+        }
+        used_fallback = True
+        logger.info(
+            f"Using fallback weather data for {location}: "
+            f"rainfall={weather_data['rainfall']}mm, "
+            f"temp={weather_data['temperature']}°C, "
+            f"humidity={weather_data['humidity']}%"
+        )
+        return weather_data, used_fallback
 
 def landing_page(request):
     return render(request, 'yield_predictor/landing.html')
+
+@login_required
+def dashboard(request):
+    predictions = YieldPrediction.objects.filter(user=request.user).order_by('-created_at')
+    
+    locations = [
+        "Nakuru", "Eldoret", "Kitale", "Naivasha", "Narok", "Kericho", "Kapsabet",
+        "Kabarnet", "Iten", "Nyahururu", "Lake Nakuru", "Lake Naivasha", "Lake Baringo",
+        "Lake Bogoria", "Lake Elementaita", "Kerio Valley", "Mau Escarpment", "Tugen Hills",
+        "Cherangani Hills", "Bomet"
+    ]
+
+    # Get the latest prediction's location or fallback to Eldoret
+    latest_location = predictions[0].location if predictions else "Eldoret"
+    coords = location_coords.get(latest_location, {"lat": 0.5143, "lon": 35.2698})
+
+    # Fetch the forecast data
+    forecast = get_forecast_data(lat=coords["lat"], lon=coords["lon"])
+
+    return render(request, 'yield_predictor/dashboard.html', {
+        'predictions': predictions,
+        'locations': locations,
+        'forecast': forecast  # Pass forecast to the template
+    })
 
 
 @login_required
@@ -88,7 +105,15 @@ def predict_yield(request):
         soil_ph = float(request.POST.get('soil_ph', 6.0))
         organic_carbon = float(request.POST.get('organic_carbon', 1.5))
         fertilizer = float(request.POST.get('fertilizer', 100))
-        planting_date = int(request.POST.get('planting_date', 90))
+        planting_date_str = request.POST.get('planting_date')
+        try:
+            planting_date = datetime.strptime(planting_date_str, "%Y-%m-%d")
+            planting_day = planting_date.timetuple().tm_yday
+        except (ValueError, TypeError):
+            return render(request, 'yield_predictor/predict_yield.html', {
+                'locations': locations,
+                'error': 'Invalid planting date format.'
+            })
         prev_yield = float(request.POST.get('prev_yield', 3.5))
         market_price = float(request.POST.get('market_price', 3500))
         labour_cost = float(request.POST.get('labour_cost', 1000))
@@ -104,6 +129,7 @@ def predict_yield(request):
                 'error': 'Model file not found. Please contact admin.'
             })
 
+        # Fetch weather data
         weather, fallback_used = get_weather_data(location)
         if not weather:
             return render(request, 'yield_predictor/predict_yield.html', {
@@ -111,6 +137,7 @@ def predict_yield(request):
                 'error': 'Weather data unavailable.'
             })
 
+        # Prepare input data
         input_data = {
             'Year': 2025,
             'Rainfall (mm)': weather['rainfall'],
@@ -120,7 +147,7 @@ def predict_yield(request):
             'Soil_pH': soil_ph,
             'Organic_Carbon (%)': organic_carbon,
             'Fertilizer (kg/ha)': fertilizer,
-            'Planting_Date': planting_date,
+            'Planting_Date': planting_day,
             'Prev_Yield (tons/ha)': prev_yield
         }
 
@@ -139,12 +166,27 @@ def predict_yield(request):
             })
 
         yield_pred = model.predict(input_df)[0]
-        best_days, best_profit = optimize_harvest(yield_pred, market_price, labour_cost, storage_loss)
+        harvest_window, best_profit = optimize_harvest(
+            yield_pred, market_price, labour_cost, storage_loss, planting_date
+        )
+
+        YieldPrediction.objects.create(
+            user=request.user,
+            location=location,
+            planting_date=planting_date,
+            predicted_yield=round(yield_pred, 2),
+            harvest_window=harvest_window,
+            net_profit=round(best_profit, 2),
+            rainfall=weather['rainfall'],
+            temperature=weather['temperature'],
+            humidity=weather['humidity'],
+            fallback_used=fallback_used
+        )
 
         return render(request, 'yield_predictor/predict_yield.html', {
             'locations': locations,
             'yield_pred': round(yield_pred, 2),
-            'best_days': best_days,
+            'best_days': harvest_window,
             'best_profit': round(best_profit, 2),
             'weather': weather,
             'fallback_used': fallback_used
@@ -153,12 +195,20 @@ def predict_yield(request):
     return render(request, 'yield_predictor/predict_yield.html', {'locations': locations})
 
 
-def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, days_range=range(90, 151)):
+def optimize_harvest(yield_pred, market_price, labour_cost, storage_loss, planting_date, days_range=range(90, 151)):
     profits = []
     for days in days_range:
         adjusted_loss = storage_loss + (days - 90) * 0.1
         adjusted_loss = min(adjusted_loss, 30)
         profit = (yield_pred * market_price * (1 - adjusted_loss / 100) - labour_cost)
-        profits.append((days, profit))
-    best_days, best_profit = max(profits, key=lambda x: x[1])
-    return best_days, best_profit
+        harvest_date = planting_date + timedelta(days=days)
+        profits.append((harvest_date, profit))
+
+    # Find the best harvest date by max profit
+    best_date, best_profit = max(profits, key=lambda x: x[1])
+
+    # Define a window of ±7 days for flexibility
+    start_date = (best_date - timedelta(days=3)).strftime("%d %B %Y")
+    end_date = (best_date + timedelta(days=3)).strftime("%d %B %Y")
+    harvest_window = f"{start_date} to {end_date}"
+    return harvest_window, best_profit
