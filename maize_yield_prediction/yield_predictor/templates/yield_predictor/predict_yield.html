@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
+{% block title %}Predict Maize Yield{% endblock %}
 {% block content %}
 <div class="container">
   <div class="card p-4">
@@ -17,66 +20,74 @@
           <label for="location">Location</label>
           <select name="location" class="form-select" required>
             {% for loc in locations %}
-            <option value="{{ loc }}">{{ loc }}</option>
+            <option value="{{ loc }}" {% if request.POST.location == loc %}selected{% endif %}>{{ loc }}</option>
             {% endfor %}
           </select>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="soil_moisture">Soil Moisture (%)</label>
-          <input type="number" class="form-control" name="soil_moisture" step="0.1" value="25" required>
+          <input type="number" class="form-control" name="soil_moisture" value="{{ request.POST.soil_moisture }}"
+            placeholder="e.g. 25" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="soil_ph">Soil pH</label>
-          <input type="number" class="form-control" name="soil_ph" step="0.1" value="6.0" required>
+          <input type="number" class="form-control" name="soil_ph" value="{{ request.POST.soil_ph }}"
+            placeholder="e.g. 6.0" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="organic_carbon">Organic Carbon (%)</label>
-          <input type="number" class="form-control" name="organic_carbon" step="0.1" value="1.5" required>
+          <input type="number" class="form-control" name="organic_carbon" value="{{ request.POST.organic_carbon }}"
+            placeholder="e.g. 1.5" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="fertilizer">Fertilizer (kg/ha)</label>
-          <input type="number" class="form-control" name="fertilizer" step="0.1" value="100" required>
+          <input type="number" class="form-control" name="fertilizer" value="{{ request.POST.fertilizer }}"
+            placeholder="e.g. 100" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
-          <label for="planting_date">Planting Date (Julian)</label>
-          <input type="number" class="form-control" name="planting_date" value="90" required>
+          <label for="planting_date">Planting Date</label>
+          <input type="date" class="form-control" name="planting_date" value="{{ request.POST.planting_date }}"
+            required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="prev_yield">Previous Yield (tons/ha)</label>
-          <input type="number" class="form-control" name="prev_yield" step="0.1" value="3.5" required>
+          <input type="number" class="form-control" name="prev_yield" value="{{ request.POST.prev_yield }}"
+            placeholder="e.g. 3.5" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="market_price">Market Price (KES/ton)</label>
-          <input type="number" class="form-control" name="market_price" step="0.1" value="3500" required>
+          <input type="number" class="form-control" name="market_price" value="{{ request.POST.market_price }}"
+            placeholder="e.g. 3500" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="labour_cost">Labour Cost (KES/ha)</label>
-          <input type="number" class="form-control" name="labour_cost" step="0.1" value="1000" required>
+          <input type="number" class="form-control" name="labour_cost" value="{{ request.POST.labour_cost }}"
+            placeholder="e.g. 1000" step="0.1" required>
         </div>
 
         <div class="col-md-6 mb-3">
           <label for="storage_loss">Storage Loss (%)</label>
-          <input type="number" class="form-control" name="storage_loss" step="0.1" value="15" required>
+          <input type="number" class="form-control" name="storage_loss" value="{{ request.POST.storage_loss }}"
+            placeholder="e.g. 15" step="0.1" required>
         </div>
-      </div>
 
-      <button type="submit" class="btn btn-success mt-3">Predict Yield</button>
 
-      <!-- Progress Bar -->
-      <div id="progressContainer">
-        <label class="form-label mt-3">⏳ Processing your prediction...</label>
-        <div class="progress">
-          <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"
-               style="width: 0%;" id="progressBar"></div>
-        </div>
+        <button type="submit" class="btn btn-success mt-3">Predict Yield</button>
+
+        <!-- Progress Bar -->
+        <div id="progressContainer" style="display: none;">
+          <label class="form-label mt-3">⏳ Processing your prediction...</label>
+          <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" id="progressBar"></div>
+          </div>
       </div>
     </form>
 
@@ -85,11 +96,13 @@
       <h3>✅ Prediction Results</h3>
       <ul class="list-group">
         <li class="list-group-item">Predicted Yield: <strong>{{ yield_pred }} tons/ha</strong></li>
-        <li class="list-group-item">Optimal Harvest Day: <strong>{{ best_days }}</strong></li>
+        <li class="list-group-item">
+          Optimal Harvest Window: <strong>{{ best_days }}</strong>
+        </li>
         <li class="list-group-item">Estimated Net Profit: <strong>{{ best_profit }} KES/ha</strong></li>
         <li class="list-group-item">Rainfall: {{ weather.rainfall }} mm</li>
-        <li class="list-group-item">Temperature: {{ weather.temperature }} °C</li>
-        <li class="list-group-item">Humidity: {{ weather.humidity }} %</li>               
+        <li class="list-group-item">Temperature: {{ weather.temperature}} °C</li>
+        <li class="list-group-item">Humidity: {{ weather.humidity }} %</li>
       </ul>
 
       {% if weather.fallback %}

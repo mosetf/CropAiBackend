@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Use environment variables
+FORECAST_URL = os.getenv('OPENWEATHER_FORECAST_URL')
 API_KEY = os.getenv("API_KEY")
 BASE_URL = os.getenv("BASE_URL")
 
@@ -67,9 +68,13 @@ LOGGING = {
     },
 }
 
-ACCOUNT_LOGOUT_ON_GET = False # Ensures logout only happens via POST
+ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
+# Session will expire after 1 minutes of inactivity
+SESSION_COOKIE_AGE = 1 * 60  # 1 minutes in seconds
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True
 
 INSTALLED_APPS = [
     'django.contrib.admin',
