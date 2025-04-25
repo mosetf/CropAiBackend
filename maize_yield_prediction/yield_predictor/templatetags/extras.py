@@ -3,8 +3,8 @@ from django import template
 register = template.Library()
 
 @register.filter
-def pluck(objects, attr):
-    return [getattr(obj, attr).isoformat() if hasattr(getattr(obj, attr), 'isoformat') else getattr(obj, attr) for obj in objects]
+def pluck(list_of_dicts, key):
+    return [item.get(key) for item in list_of_dicts if isinstance(item, dict)]
 
 @register.filter
 def avg(queryset, field):
