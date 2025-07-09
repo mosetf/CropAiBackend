@@ -42,9 +42,7 @@ Agriculture is the backbone of Kenya’s economy, yet smallholder farmers strugg
 ✅ **Python (Pandas, Scikit-Learn, Joblib)** – Model training & deployment  
 ✅ **Django & Django REST Framework** – API & Web App Backend  
 ✅ **OpenWeather API** – Real-time weather data integration  
-✅ **PostgreSQL / SQLite** – Database for storing predictions  
-✅ **Docker (Optional)** – Containerized deployment  
-✅ **AWS / Heroku (Optional)** – Cloud deployment  
+✅ **PostgreSQL / SQLite** – Database for storing predictions   
 
 ---
 
