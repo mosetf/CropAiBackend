@@ -2,7 +2,6 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 # Use environment variables
@@ -25,7 +24,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory for collected static files
 STATICFILES_DIRS = [
     BASE_DIR / 'maize_yield_prediction' / 'yield_predictor' / 'static',
-]  # Where Django looks for static files
+]
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
@@ -71,8 +70,8 @@ LOGGING = {
 ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
-# Session will expire after 1 minutes of inactivity
-SESSION_COOKIE_AGE = 1 * 60  # 1 minutes in seconds
+# Session will expire after 5 minutes of inactivity
+SESSION_COOKIE_AGE = 5 * 60  # 5 minutes in seconds
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True
 
