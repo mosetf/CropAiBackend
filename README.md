@@ -1,10 +1,10 @@
-# 🚀 AI-Powered Crop Yield Prediction and Harvest Optimization
+#  AI-Powered Crop Yield Prediction and Harvest Optimization
 
 **An AI-driven system to predict maize yield and optimize harvest schedules for Kenyan farmers using machine learning and real-time weather data.**
 
 ---
 
-## 📌 Table of Contents
+##  Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
 - [Technologies Used](#technologies-used)
@@ -19,7 +19,7 @@
 
 ---
 
-## 📌 Introduction
+##  Introduction
 Agriculture is the backbone of Kenya’s economy, yet smallholder farmers struggle with **unpredictable yields, poor harvest planning, and lack of data-driven decision-making tools**. This project leverages **machine learning and weather APIs** to provide **accurate maize yield predictions and harvest optimization recommendations.**
 
 ### Key Objectives
@@ -29,7 +29,7 @@ Agriculture is the backbone of Kenya’s economy, yet smallholder farmers strugg
 
 ---
 
-## 🎯 Features
+##  Features
 🔹 **Machine Learning-Based Yield Prediction** – Uses a Random Forest model to predict maize yield.
 🔹 **Harvest Optimization** – Determines the best time to harvest based on weather conditions.
 🔹 **Real-Time Weather Data** – Integrates OpenWeather API for live weather updates.
@@ -52,38 +52,55 @@ Agriculture is the backbone of Kenya’s economy, yet smallholder farmers strugg
 ```
 CropYieldPrediction/  # Root directory
 │
-├── data/                  # Dataset storage
-│   ├── raw/               # Raw CSV datasets
-│   ├── processed/         # Cleaned & preprocessed data
-│   └── external/          # External API data (weather, soil, etc.)
+├── data/                                           # Data directory
+│   ├── raw/                                        # Raw datasets (CSV, JSON, etc.)
+│   ├── processed/                                  # Cleaned and preprocessed datasets
+│   └── external/                                   # External datasets from APIs
 │
-├── notebooks/             # Jupyter notebooks for model training
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_data_preprocessing.ipynb
-│   ├── 03_model_training.ipynb
-│   ├── 04_model_tuning.ipynb
-│   └── 05_model_deployment.ipynb
+├── notebooks/                                      # Jupyter Notebooks
+│   ├── 01_data_exploration.ipynb                  # Exploratory Data Analysis (EDA)
 │
-├── models/                # Trained models storage
-│   └── maize_yield_kenya_model.pkl
+├── models/                                         # Trained models
+│   └── rf_yield_model.pkl                # Saved Random Forest model
 │
-├── maize_yield_prediction/  # Django project
-│   ├── yield_predictor/      # Django app
-│   │   ├── views.py          # API logic
-│   │   ├── urls.py           # URL routing
-│   │   ├── models.py         # Database models
-│   │   └── templates/        # Frontend (HTML)
+├── maize_yield_prediction/                         # Django project
+│   ├── yield_predictor/                            # Django app
+│   │   ├── migrations/                            # Database migrations
+│   │   ├── __init__.py                            # Initialization file
+│   │   ├── admin.py                               # Admin configuration
+│   │   ├── apps.py                                # App configuration
+│   │   ├── models.py                              # Database models
+│   │   ├── tests.py                               # Unit tests
+│   │   ├── views.py                               # Django view for predictions
+│   │   ├── rf_yield_model.pkl           # Model saved in Django app
+│   │   ├── urls.py
+│   │   ├── static/                                 
+│   │   │     └── css/ 
+│   │   │           └──landing.css
+│   │   │
+│   │   ├──templates/                              
+│   │   │    ├──  base.html 
+│   │   │    ├──   account/
+│   │   │    │       ├──login.html
+│   │   │    │       ├──password_reset.html
+│   │   │    │       ├──signup.html
+│   │   │    │       ├──password_reset_complete.html
+│   │   │    ├──   yield_predictor/
+│   │   │    │       ├── landing.html
+│   │   │    │       ├── predict_yield.html                         
 │   │
-│   ├── settings.py          # Django project settings
-│   ├── manage.py            # Django management script
+│   ├── maize_yield_prediction/                    # Django project settings
+│   │   ├── __init__.py                            # Initialization file
+│   │   ├── asgi.py                                # ASGI configuration
+│   │   ├── settings.py                            # Django settings
+│   │   ├── urls.py                                # Main URL routing
+│   │   └── wsgi.py                                # WSGI configuration
+│   │
+│   ├── manage.py                                  # Django management script
 │
-├── webapp/                  # (Optional) Frontend UI
-│   ├── templates/           # HTML templates
-│   ├── static/              # CSS/JS files
 │
-├── requirements.txt         # Python dependencies
-├── README.md                # Documentation
-└── .gitignore               # Files to ignore in version control
+├── requirements.txt                                # List of Python dependencies
+├── README.md                                       # Project documentation
 ```
 
 ---
