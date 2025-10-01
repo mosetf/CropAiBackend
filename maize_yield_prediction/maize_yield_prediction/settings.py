@@ -4,17 +4,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Use environment variables
 FORECAST_URL = os.getenv('OPENWEATHER_FORECAST_URL')
 API_KEY = os.getenv("API_KEY")
 BASE_URL = os.getenv("BASE_URL")
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-*yb&jw_$oojubya%ate5j@vjix%c)vhvi+j1n15h72jtw9h=23'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -23,7 +20,7 @@ ALLOWED_HOSTS = []
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory for collected static files
 STATICFILES_DIRS = [
-    BASE_DIR / 'maize_yield_prediction' / 'yield_predictor' / 'static',
+    BASE_DIR / 'yield_predictor' / 'static',
 ]
 
 AUTHENTICATION_BACKENDS = (
@@ -40,7 +37,7 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-LOGIN_REDIRECT_URL = '/predict/' 
+LOGIN_REDIRECT_URL = '/dashboard/' 
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"

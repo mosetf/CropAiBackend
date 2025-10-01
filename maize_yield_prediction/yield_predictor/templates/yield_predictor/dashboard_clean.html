@@ -1,0 +1,333 @@
+<!-- Django HTML Template - Farmer Themed Dashboard -->
+{% extends 'base.html' %}
+{% load static extras %}
+
+{% block title %}CropAI Kenya Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+/* FORCE farmer theme styles with high specificity */
+body {
+    background: linear-gradient(135deg, #FFF8DC 0%, #F5E6D3 100%) !important;
+    min-height: 100vh !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+.dashboard-header {
+    background: linear-gradient(135deg, #2D5A27 0%, #4A7C59 100%) !important;
+    color: white !important;
+    padding: 2rem 0 !important;
+    margin-bottom: 2rem !important;
+    box-shadow: 0 4px 12px rgba(45, 90, 39, 0.3) !important;
+}
+
+.dashboard-header h1 {
+    color: white !important;
+    font-weight: 700 !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dashboard-header p {
+    color: #FFF8DC !important;
+    font-size: 1.1rem !important;
+}
+
+.crop-card {
+    background: white !important;
+    border-radius: 16px !important;
+    border: none !important;
+    box-shadow: 0 8px 24px rgba(45, 90, 39, 0.15) !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+    margin-bottom: 1.5rem !important;
+    position: relative !important;
+}
+
+.crop-card:hover {
+    transform: translateY(-8px) !important;
+    box-shadow: 0 16px 40px rgba(45, 90, 39, 0.25) !important;
+}
+
+.crop-card .card-header {
+    background: linear-gradient(135deg, #4A7C59 0%, #2D5A27 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 1.5rem !important;
+    text-align: center !important;
+}
+
+.crop-card .card-header h5 {
+    color: white !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    font-size: 1.3rem !important;
+}
+
+.crop-card.active {
+    border: 3px solid #D4AF37 !important;
+}
+
+.crop-card.active::before {
+    content: "✅ ACTIVE" !important;
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    background: #D4AF37 !important;
+    color: #2D5A27 !important;
+    padding: 4px 12px !important;
+    border-radius: 20px !important;
+    font-size: 0.8rem !important;
+    font-weight: bold !important;
+    z-index: 10 !important;
+}
+
+.crop-card.coming-soon::after {
+    content: "🚧 COMING SOON" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    background: rgba(139, 69, 19, 0.95) !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 25px !important;
+    font-weight: bold !important;
+    z-index: 5 !important;
+}
+
+.crop-card.coming-soon .card-body {
+    filter: blur(1px) !important;
+}
+
+.crop-card .card-body {
+    padding: 2rem !important;
+    background: linear-gradient(180deg, white 0%, #FFF8DC 100%) !important;
+}
+
+.btn-predict {
+    background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%) !important;
+    color: #2D5A27 !important;
+    border: none !important;
+    padding: 12px 24px !important;
+    border-radius: 25px !important;
+    font-weight: bold !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    text-decoration: none !important;
+}
+
+.btn-predict:hover {
+    background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%) !important;
+    color: #2D5A27 !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
+}
+
+.crop-icon {
+    font-size: 3rem !important;
+    margin-bottom: 1rem !important;
+    display: block !important;
+    text-align: center !important;
+}
+
+.info-section {
+    background: linear-gradient(135deg, #FFF8DC 0%, white 100%) !important;
+    border: 2px solid #8FBC8F !important;
+    border-radius: 16px !important;
+    padding: 2rem !important;
+    margin: 2rem 0 !important;
+}
+
+.info-section h4 {
+    color: #2D5A27 !important;
+    font-weight: 700 !important;
+}
+
+.info-section p {
+    color: #556B2F !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Farmer-themed header -->
+<div class="dashboard-header">
+    <div class="container">
+        <div class="text-center">
+            <h1 class="display-4 mb-3">🌾 Welcome to CropAI Kenya</h1>
+            <p class="lead">Choose your crop to get AI-powered yield predictions and farming insights</p>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <!-- Crop Selection Grid -->
+    <div class="row g-4 mb-5">
+        <!-- Maize - Working -->
+        <div class="col-md-4">
+            <div class="card crop-card active h-100">
+                <div class="card-header">
+                    <div class="crop-icon">🌽</div>
+                    <h5>Maize</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">AI-powered yield prediction for Kenya's staple crop. Get insights on optimal planting times, harvest optimization, and profit maximization.</p>
+                    <a href="{% url 'predict_yield' %}" class="btn btn-predict">
+                        <i class="fas fa-chart-line"></i> Start Prediction
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beans - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card crop-card coming-soon h-100">
+                <div class="card-header">
+                    <div class="crop-icon">🫘</div>
+                    <h5>Beans</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">Smart predictions for common beans, a key protein source and companion crop. Perfect for intercropping optimization.</p>
+                    <button class="btn btn-predict" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coffee - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card crop-card coming-soon h-100">
+                <div class="card-header">
+                    <div class="crop-icon">☕</div>
+                    <h5>Coffee</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">Premium coffee yield optimization for Kenya's world-renowned coffee industry. Climate-smart farming insights.</p>
+                    <button class="btn btn-predict" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="row g-4 mb-5">
+        <!-- Tea - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card crop-card coming-soon h-100">
+                <div class="card-header">
+                    <div class="crop-icon">🍃</div>
+                    <h5>Tea</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">Precision tea farming for Kenya's major export crop. Optimize quality and yield with AI-driven insights.</p>
+                    <button class="btn btn-predict" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wheat - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card crop-card coming-soon h-100">
+                <div class="card-header">
+                    <div class="crop-icon">🌾</div>
+                    <h5>Wheat</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">Strategic wheat production insights for food security. Optimize planting and harvesting for maximum yield.</p>
+                    <button class="btn btn-predict" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorghum - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card crop-card coming-soon h-100">
+                <div class="card-header">
+                    <div class="crop-icon">🌾</div>
+                    <h5>Sorghum</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">Drought-resistant crop optimization for arid and semi-arid regions. Climate-resilient farming solutions.</p>
+                    <button class="btn btn-predict" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Section -->
+    <div class="row mb-5">
+        <div class="col-md-10 mx-auto">
+            <div class="info-section text-center">
+                <h4><i class="fas fa-info-circle"></i> 🌱 What's Growing Next?</h4>
+                <p>We're cultivating AI models for Kenya's major crops. Each model is trained on local soil data, weather patterns, and proven agricultural practices to deliver the most accurate predictions for your farm.</p>
+                <div class="row text-center mt-4">
+                    <div class="col-md-3">
+                        <i class="fas fa-brain fa-2x mb-2" style="color: #2D5A27;"></i>
+                        <small class="d-block" style="color: #2F4F2F; font-weight: 600;">AI-Powered</small>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="fas fa-map-marker-alt fa-2x mb-2" style="color: #228B22;"></i>
+                        <small class="d-block" style="color: #2F4F2F; font-weight: 600;">Kenya-Specific</small>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="fas fa-cloud-sun fa-2x mb-2" style="color: #D4AF37;"></i>
+                        <small class="d-block" style="color: #2F4F2F; font-weight: 600;">Weather-Smart</small>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="fas fa-chart-line fa-2x mb-2" style="color: #4A7C59;"></i>
+                        <small class="d-block" style="color: #2F4F2F; font-weight: 600;">Profit-Focused</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Previous Predictions Section (if any exist) -->
+    {% if predictions %}
+    <div class="card" style="background: linear-gradient(135deg, #228B22 0%, #4A7C59 100%); color: white; border-radius: 16px; margin-bottom: 2rem;">
+        <div class="card-header" style="background: transparent; border: none;">
+            <h4 class="mb-0" style="color: white;"><i class="fas fa-chart-line"></i> 📊 Your Farming Analytics</h4>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h6 style="color: #FFF8DC;">Total Predictions</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions|length }}</p>
+                </div>
+                <div class="col-md-4">
+                    <h6 style="color: #FFF8DC;">Latest Prediction</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions.0.created_at|date:"M d" }}</p>
+                </div>
+                <div class="col-md-4">
+                    <h6 style="color: #FFF8DC;">Latest Location</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions.0.location }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert" style="background: linear-gradient(135deg, #87CEEB 0%, #B0E0E6 100%); border: none; color: white; text-align: center; border-radius: 12px;">
+        <h5><i class="fas fa-seedling"></i> Ready to Start Farming Smarter?</h5>
+        <p>No maize predictions yet. Click on the Maize card above to start your first AI-powered yield prediction!</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if predictions %}
+<!-- Chart data for JavaScript -->
+<script id="chart-data" type="application/json">{{ chart_data_json|safe }}</script>
+{% endif %}
+
+<!-- Dashboard JavaScript -->
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}
