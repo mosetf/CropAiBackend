@@ -86,7 +86,7 @@ CropAI Kenya is a comprehensive agricultural technology platform that leverages 
 
 ### Database & Storage
 - **SQLite**: Development database
-- **PostgreSQL**: Production database (recommended)
+- **PostgreSQL**: Prod
 - **Django ORM**: Object-relational mapping
 
 ### APIs & Services
