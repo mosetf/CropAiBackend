@@ -1,15 +1,187 @@
 {% extends 'base.html' %}
 {% load static extras %}
 
-{% block title %}Crop Dashboard{% endblock %}
+{% block title %}CropAI Kenya Dashboard{% endblock %}
 
 {% block content %}
 <div class="container my-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0"><i class="fas fa-seedling"></i> My Crop Dashboard</h2>
-        </a>
+    <!-- Welcome Header -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3"><i class="fas fa-seedling text-success"></i> Welcome to CropAI Kenya</h1>
+        <p class="lead text-muted">Choose your crop to get AI-powered yield predictions and optimization insights</p>
     </div>
 
+    <!-- Crop Selection Grid -->
+    <div class="row g-4 mb-5">
+        <!-- Maize - Working -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-success crop-card position-relative">
+                <div class="card-img-top bg-success text-white text-center py-4">
+                    <i class="fas fa-seedling fa-4x"></i>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">🌽 Maize</h5>
+                    <p class="card-text">AI-powered yield prediction for Kenya's staple crop. Get insights on optimal planting times, harvest optimization, and profit maximization.</p>
+                    <div class="badge bg-success mb-2">✓ Available Now</div>
+                    <br>
+                    <a href="{% url 'predict_yield' %}" class="btn btn-success btn-lg mt-2">
+                        <i class="fas fa-chart-line"></i> Start Prediction
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beans - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm crop-card position-relative">
+                <div class="card-img-top bg-warning text-white text-center py-4">
+                    <i class="fas fa-seedling fa-4x"></i>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title text-warning">🫘 Beans</h5>
+                    <p class="card-text">Smart predictions for common beans, a key protein source and companion crop. Perfect for intercropping optimization.</p>
+                    <div class="badge bg-warning mb-2">🚧 Coming Soon</div>
+                    <br>
+                    <button class="btn btn-outline-warning btn-lg mt-2" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+                <div class="coming-soon-overlay">
+                    <div class="coming-soon-banner">
+                        <span class="badge bg-warning fs-6">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coffee - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm crop-card position-relative">
+                <div class="card-img-top bg-info text-white text-center py-4">
+                    <i class="fas fa-coffee fa-4x"></i>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title text-info">☕ Coffee</h5>
+                    <p class="card-text">Premium coffee yield optimization for Kenya's world-renowned coffee industry. Climate-smart farming insights.</p>
+                    <div class="badge bg-info mb-2">🚧 Coming Soon</div>
+                    <br>
+                    <button class="btn btn-outline-info btn-lg mt-2" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+                <div class="coming-soon-overlay">
+                    <div class="coming-soon-banner">
+                        <span class="badge bg-info fs-6">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tea - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm crop-card position-relative">
+                <div class="card-img-top bg-secondary text-white text-center py-4">
+                    <i class="fas fa-leaf fa-4x"></i>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title text-secondary">🍃 Tea</h5>
+                    <p class="card-text">Precision tea farming for Kenya's major export crop. Optimize quality and yield with AI-driven insights.</p>
+                    <div class="badge bg-secondary mb-2">🚧 Coming Soon</div>
+                    <br>
+                    <button class="btn btn-outline-secondary btn-lg mt-2" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+                <div class="coming-soon-overlay">
+                    <div class="coming-soon-banner">
+                        <span class="badge bg-secondary fs-6">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wheat - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm crop-card position-relative">
+                <div class="card-img-top bg-primary text-white text-center py-4">
+                    <i class="fas fa-wheat-awn fa-4x"></i>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title text-primary">🌾 Wheat</h5>
+                    <p class="card-text">Strategic wheat production insights for food security. Optimize planting and harvesting for maximum yield.</p>
+                    <div class="badge bg-primary mb-2">🚧 Coming Soon</div>
+                    <br>
+                    <button class="btn btn-outline-primary btn-lg mt-2" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+                <div class="coming-soon-overlay">
+                    <div class="coming-soon-banner">
+                        <span class="badge bg-primary fs-6">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorghum - Coming Soon -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm crop-card position-relative">
+                <div class="card-img-top bg-danger text-white text-center py-4">
+                    <i class="fas fa-seedling fa-4x"></i>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title text-danger">🌾 Sorghum</h5>
+                    <p class="card-text">Drought-resistant crop optimization for arid and semi-arid regions. Climate-resilient farming solutions.</p>
+                    <div class="badge bg-danger mb-2">🚧 Coming Soon</div>
+                    <br>
+                    <button class="btn btn-outline-danger btn-lg mt-2" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+                <div class="coming-soon-overlay">
+                    <div class="coming-soon-banner">
+                        <span class="badge bg-danger fs-6">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Section -->
+    <div class="row mb-5">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="card-title"><i class="fas fa-info-circle text-info"></i> What's Coming Next?</h4>
+                    <p class="card-text">
+                        We're actively developing AI models for Kenya's major crops. Each crop model is trained on 
+                        local data, weather patterns, and agricultural best practices to provide you with the most 
+                        accurate predictions possible.
+                    </p>
+                    <div class="row text-center mt-4">
+                        <div class="col-md-3">
+                            <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                            <small class="d-block">AI-Powered</small>
+                        </div>
+                        <div class="col-md-3">
+                            <i class="fas fa-map-marker-alt fa-2x text-success mb-2"></i>
+                            <small class="d-block">Kenya-Specific</small>
+                        </div>
+                        <div class="col-md-3">
+                            <i class="fas fa-cloud-sun fa-2x text-warning mb-2"></i>
+                            <small class="d-block">Weather-Aware</small>
+                        </div>
+                        <div class="col-md-3">
+                            <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                            <small class="d-block">Profit-Focused</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Previous Predictions Section (if any exist) -->
     {% if predictions %}
     <!-- Summary Card -->
     <div class="card shadow-sm mb-4">
@@ -64,6 +236,7 @@
                 </thead>
                 <tbody>
                     {% for p in predictions %}
+                    <tr>
                         <td>{{ p.created_at|date:"M d, Y" }}</td>
                         <td>{{ p.location }}{% if p.fallback_used %} <span class="badge bg-warning">Fallback</span>{% endif %}</td>
                         <td>{{ p.predicted_yield|floatformat:2 }} tons/ha</td>
@@ -106,10 +279,70 @@
     </div>
     {% else %}
     <div class="alert alert-info text-center">
-        <p>No predictions yet.Submit your first crop yield prediction!</a></p>
+        <p>No maize predictions yet. Start with your first crop yield prediction!</p>
     </div>
     {% endif %}
 </div>
+
+<!-- Custom CSS for Crop Cards -->
+<style>
+.crop-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.crop-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.coming-soon-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.crop-card:hover .coming-soon-overlay {
+    opacity: 1;
+}
+
+.coming-soon-banner {
+    position: absolute;
+    top: 15px;
+    right: -35px;
+    transform: rotate(45deg);
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    color: white;
+    padding: 5px 40px;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.card-img-top {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crop-card .btn:disabled {
+    cursor: not-allowed;
+}
+
+/* Card hover effects for available crop */
+.border-success:hover {
+    border-color: #198754 !important;
+}
+</style>
 
 <!-- External Libraries -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
@@ -145,15 +378,36 @@ $(document).ready(function() {
     $('[data-bs-toggle="tooltip"]').tooltip();
 });
 
+{% if predictions %}
+<script>
+// Prepare chart data
+const chartLabels = [
+    {% for prediction in predictions %}
+        "{{ prediction.created_at|date:'M d' }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const rainfallValues = [
+    {% for prediction in predictions %}
+        {{ prediction.rainfall|default:0 }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const profitValues = [
+    {% for prediction in predictions %}
+        {{ prediction.net_profit|default:0 }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
 // Rainfall Chart
 const rainfallCtx = document.getElementById('rainfallChart').getContext('2d');
 new Chart(rainfallCtx, {
     type: 'bar',
     data: {
-        labels: {{ predictions|pluck:"created_at"|safe }}.map(iso => new Date(iso).toLocaleDateString()),
+        labels: chartLabels,
         datasets: [{
             label: 'Rainfall (mm)',
-            data: {{ predictions|pluck:"rainfall"|safe }},
+            data: rainfallValues,
             backgroundColor: 'rgba(54, 162, 235, 0.7)',
             borderColor: 'rgba(54, 162, 235, 1)',
             borderWidth: 1
@@ -176,10 +430,10 @@ const profitCtx = document.getElementById('profitChart').getContext('2d');
 new Chart(profitCtx, {
     type: 'line',
     data: {
-        labels: {{ predictions|pluck:"created_at"|safe }}.map(iso => new Date(iso).toLocaleDateString()),
+        labels: chartLabels,
         datasets: [{
             label: 'Net Profit (KES/ha)',
-            data: {{ predictions|pluck:"net_profit"|safe }},
+            data: profitValues,
             borderColor: 'rgba(40, 167, 69, 1)',
             backgroundColor: 'rgba(40, 167, 69, 0.2)',
             fill: true,
@@ -198,66 +452,7 @@ new Chart(profitCtx, {
     }
 });
 </script>
-
-<canvas id="forecastChart" height="100"></canvas>
-
-<script>
-  const forecastLabels = {{ forecast|pluck:"datetime"|safe }}.map(dt => new Date(dt).toLocaleString());
-  const forecastRain = {{ forecast|pluck:"rain"|safe }};
-  const forecastTemp = {{ forecast|pluck:"temperature"|safe }};
-  const forecastHumidity = {{ forecast|pluck:"humidity"|safe }};
-
-  new Chart(document.getElementById('forecastChart'), {
-    type: 'line',
-    data: {
-      labels: forecastLabels,
-      datasets: [
-        {
-          label: 'Rainfall (mm)',
-          data: forecastRain,
-          borderColor: 'rgba(0, 123, 255, 1)',
-          backgroundColor: 'rgba(0, 123, 255, 0.2)',
-          fill: true,
-          tension: 0.3
-        },
-        {
-          label: 'Temperature (°C)',
-          data: forecastTemp,
-          borderColor: 'rgba(255, 99, 132, 1)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          fill: false,
-          tension: 0.3
-        },
-        {
-          label: 'Humidity (%)',
-          data: forecastHumidity,
-          borderColor: 'rgba(40, 167, 69, 1)',
-          backgroundColor: 'rgba(40, 167, 69, 0.2)',
-          fill: false,
-          tension: 0.3
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        tooltip: { enabled: true },
-        legend: { display: true }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: "Value" }
-        },
-        x: {
-          ticks: { maxTicksLimit: 12 }
-        }
-      }
-    }
-  });
-</script>
-
-
+{% endif %}
 
 <style>
 #predictionsTable tr:hover {
