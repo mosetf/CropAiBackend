@@ -415,7 +415,11 @@ body {
                             <div class="p-3 metric-card" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #66BB6A;">
                                 <small class="text-muted">Net Profit</small>
                                 <div style="font-size: 1.4rem; font-weight: bold; color: #1B5E20;">
-                                    KSh {{ prediction.net_profit|floatformat:0|add:"0"|slice:":6" }}{{ prediction.net_profit|floatformat:0|add:"0"|slice:"6:" and "k" or "" }}
+                                    {% if prediction.net_profit >= 1000000 %}
+                                        KSh {{ prediction.net_profit|floatformat:0|slice:":6" }}k
+                                    {% else %}
+                                        KSh {{ prediction.net_profit|floatformat:0 }}
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
