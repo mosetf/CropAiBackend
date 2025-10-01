@@ -8,6 +8,7 @@ from django.conf import settings
 import os
 import logging
 from datetime import datetime, timedelta
+import json
 from .models import YieldPrediction
 from .utils.weather_utils import get_forecast_data, location_coords
 
@@ -83,10 +84,19 @@ def dashboard(request):
     # Fetch the forecast data
     forecast = get_forecast_data(lat=coords["lat"], lon=coords["lon"])
 
+    chart_data = None
+    if predictions:
+        chart_data = {
+            'labels': [p.created_at.strftime('%b %d') for p in predictions],
+            'rainfall': [float(p.rainfall or 0) for p in predictions],
+            'profit': [float(p.net_profit or 0) for p in predictions]
+        }
+
     return render(request, 'yield_predictor/dashboard.html', {
         'predictions': predictions,
         'locations': locations,
-        'forecast': forecast  # Pass forecast to the template
+        'forecast': forecast,
+        'chart_data_json': json.dumps(chart_data) if chart_data else None
     })
 
 

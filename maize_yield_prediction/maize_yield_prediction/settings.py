@@ -20,7 +20,7 @@ ALLOWED_HOSTS = []
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory for collected static files
 STATICFILES_DIRS = [
-    BASE_DIR / 'maize_yield_prediction' / 'yield_predictor' / 'static',
+    BASE_DIR / 'yield_predictor' / 'static',
 ]
 
 AUTHENTICATION_BACKENDS = (
@@ -37,7 +37,7 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-LOGIN_REDIRECT_URL = '/predict/' 
+LOGIN_REDIRECT_URL = '/dashboard/' 
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
