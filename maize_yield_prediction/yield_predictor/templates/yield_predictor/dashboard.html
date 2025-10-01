@@ -152,6 +152,43 @@ body {
 .info-section p {
     color: #2E7D32 !important;
 }
+
+/* Prediction History Card Styles */
+.prediction-card {
+    transition: all 0.3s ease !important;
+}
+
+.prediction-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 12px 32px rgba(27, 94, 32, 0.15) !important;
+}
+
+.metric-card {
+    transition: all 0.2s ease !important;
+}
+
+.metric-card:hover {
+    transform: scale(1.02) !important;
+}
+
+.weather-metric {
+    transition: all 0.2s ease !important;
+}
+
+.weather-metric:hover {
+    transform: scale(1.05) !important;
+}
+
+/* Animation for prediction cards */
+.prediction-card {
+    animation: slideInUp 0.6s ease-out !important;
+}
+
+.prediction-card:nth-child(1) { animation-delay: 0.1s !important; }
+.prediction-card:nth-child(2) { animation-delay: 0.2s !important; }
+.prediction-card:nth-child(3) { animation-delay: 0.3s !important; }
+.prediction-card:nth-child(4) { animation-delay: 0.4s !important; }
+.prediction-card:nth-child(5) { animation-delay: 0.5s !important; }
 </style>
 {% endblock %}
 
@@ -336,7 +373,7 @@ body {
     </div>
 
     {% for prediction in predictions %}
-    <div class="card mb-4" style="background: white; border: 2px solid #E8F5E8; border-radius: 16px; box-shadow: 0 8px 24px rgba(27, 94, 32, 0.1);">
+    <div class="card mb-4 prediction-card" style="background: white; border: 2px solid #E8F5E8; border-radius: 16px; box-shadow: 0 8px 24px rgba(27, 94, 32, 0.1);">
         <div class="card-header" style="background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%); color: white; border: none; border-radius: 14px 14px 0 0;">
             <div class="row align-items-center">
                 <div class="col-md-8">
@@ -367,7 +404,7 @@ body {
                     </h6>
                     <div class="row">
                         <div class="col-sm-6 mb-3">
-                            <div class="p-3" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #4CAF50;">
+                            <div class="p-3 metric-card" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #4CAF50;">
                                 <small class="text-muted">Predicted Yield</small>
                                 <div style="font-size: 1.4rem; font-weight: bold; color: #1B5E20;">
                                     {{ prediction.predicted_yield|floatformat:2 }} <small>tons/ha</small>
@@ -375,7 +412,7 @@ body {
                             </div>
                         </div>
                         <div class="col-sm-6 mb-3">
-                            <div class="p-3" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #66BB6A;">
+                            <div class="p-3 metric-card" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #66BB6A;">
                                 <small class="text-muted">Net Profit</small>
                                 <div style="font-size: 1.4rem; font-weight: bold; color: #1B5E20;">
                                     KSh {{ prediction.net_profit|floatformat:0|add:"0"|slice:":6" }}{{ prediction.net_profit|floatformat:0|add:"0"|slice:"6:" and "k" or "" }}
@@ -398,21 +435,21 @@ body {
                     </h6>
                     <div class="row">
                         <div class="col-sm-4 mb-3">
-                            <div class="text-center p-3" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
+                            <div class="text-center p-3 weather-metric" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
                                 <i class="fas fa-cloud-rain fa-2x mb-2"></i>
                                 <div style="font-weight: bold;">{{ prediction.rainfall|floatformat:1 }}mm</div>
                                 <small>Rainfall</small>
                             </div>
                         </div>
                         <div class="col-sm-4 mb-3">
-                            <div class="text-center p-3" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
+                            <div class="text-center p-3 weather-metric" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
                                 <i class="fas fa-thermometer-half fa-2x mb-2"></i>
                                 <div style="font-weight: bold;">{{ prediction.temperature|floatformat:1 }}°C</div>
                                 <small>Temperature</small>
                             </div>
                         </div>
                         <div class="col-sm-4 mb-3">
-                            <div class="text-center p-3" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
+                            <div class="text-center p-3 weather-metric" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
                                 <i class="fas fa-tint fa-2x mb-2"></i>
                                 <div style="font-weight: bold;">{{ prediction.humidity|floatformat:0 }}%</div>
                                 <small>Humidity</small>
