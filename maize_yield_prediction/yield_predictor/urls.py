@@ -1,11 +1,10 @@
-from django.contrib import admin
-from django.urls import include, path
-from .views import predict_yield
+from django.urls import path
 from . import views
 
+app_name = 'yield_predictor'
+
 urlpatterns = [
-    path('', views.landing_page, name='landing'),
-    path('admin/', admin.site.urls),
-    path('predict/', views.predict_yield, name='predict_yield'),
-    path('dashboard/', views.dashboard, name='dashboard'),
+    path('',          views.landing_page,  name='landing'),
+    path('predict/',  views.predict_yield, name='predict_yield'),
+    path('dashboard/',views.dashboard,     name='dashboard'),
 ]
