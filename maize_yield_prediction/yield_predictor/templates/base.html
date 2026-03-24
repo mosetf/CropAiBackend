@@ -13,7 +13,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
         <div class="container">
           <!-- Brand changes depending on the page -->
-          <a class="navbar-brand fw-bold" href="{% url 'dashboard' %}">
+          <a class="navbar-brand fw-bold" href="{% url 'yield_predictor:dashboard' %}">
             {% block header_brand %}
               {% if request.path == '/' %}
                 CropAI Kenya
@@ -34,7 +34,7 @@
                 <i class="fas fa-user"></i> {{ user.username }}
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url 'dashboard' %}">📊 My Dashboard</a></li>
+                <li><a class="dropdown-item {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url 'yield_predictor:dashboard' %}">📊 My Dashboard</a></li>
                 <li><a class="dropdown-item" href="#"><i class="fas fa-user"></i> Profile</a></li>
                 <li><a class="dropdown-item" href="#"><i class="fas fa-info-circle"></i> About</a></li>
                 <li><hr class="dropdown-divider"></li>
