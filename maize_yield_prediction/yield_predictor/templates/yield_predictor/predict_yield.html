@@ -2,11 +2,11 @@
 
 {% load static %}
 
-{% block title %}Predict Maize Yield{% endblock %}
+{% block title %}Predict Crop Yield{% endblock %}
 {% block content %}
 <div class="container">
   <div class="card p-4">
-    <h2 class="mb-4">🌽 Predict Maize Yield</h2>
+    <h2 class="mb-4">🌾 Predict Crop Yield</h2>
 
     {% if error %}
     <div class="alert alert-danger">{{ error }}</div>
@@ -16,98 +16,207 @@
       {% csrf_token %}
 
       <div class="row">
+        <!-- Crop Selection -->
         <div class="col-md-6 mb-3">
-          <label for="location">Location</label>
+          <label for="crop">🌱 Crop Type</label>
+          <select name="crop" class="form-select" required id="cropSelect">
+            <option value="">Select a crop...</option>
+            <option value="maize" {% if request.POST.crop == 'maize' %}selected{% endif %}>🌽 Maize</option>
+            <option value="beans" {% if request.POST.crop == 'beans' %}selected{% endif %}>🫘 Beans</option>
+            <option value="wheat" {% if request.POST.crop == 'wheat' %}selected{% endif %}>🌾 Wheat</option>
+            <option value="sorghum" {% if request.POST.crop == 'sorghum' %}selected{% endif %}>🌾 Sorghum</option>
+            <option value="coffee" {% if request.POST.crop == 'coffee' %}selected{% endif %}>☕ Coffee</option>
+            <option value="tea" {% if request.POST.crop == 'tea' %}selected{% endif %}>🫖 Tea</option>
+            <option value="potatoes" {% if request.POST.crop == 'potatoes' %}selected{% endif %}>🥔 Potatoes</option>
+            <option value="cassava" {% if request.POST.crop == 'cassava' %}selected{% endif %}>🍠 Cassava</option>
+            <option value="rice" {% if request.POST.crop == 'rice' %}selected{% endif %}>🍚 Rice</option>
+          </select>
+        </div>
+
+        <!-- Location -->
+        <div class="col-md-6 mb-3">
+          <label for="location">📍 Location</label>
           <select name="location" class="form-select" required>
+            <option value="">Select location...</option>
             {% for loc in locations %}
             <option value="{{ loc }}" {% if request.POST.location == loc %}selected{% endif %}>{{ loc }}</option>
             {% endfor %}
           </select>
         </div>
 
+        <!-- Soil Properties -->
         <div class="col-md-6 mb-3">
-          <label for="soil_moisture">Soil Moisture (%)</label>
-          <input type="number" class="form-control" name="soil_moisture" value="{{ request.POST.soil_moisture }}"
-            placeholder="e.g. 25" step="0.1" required>
+          <label for="soil_ph">🧪 Soil pH</label>
+          <input type="number" class="form-control" name="soil_ph" value="{{ request.POST.soil_ph|default:'6.0' }}"
+            placeholder="e.g. 6.0" step="0.1" min="3.0" max="9.0" required>
+          <small class="text-muted">Optimal: 5.5-7.0 for most crops</small>
         </div>
 
         <div class="col-md-6 mb-3">
-          <label for="soil_ph">Soil pH</label>
-          <input type="number" class="form-control" name="soil_ph" value="{{ request.POST.soil_ph }}"
-            placeholder="e.g. 6.0" step="0.1" required>
+          <label for="soil_moisture">💧 Soil Moisture (%)</label>
+          <input type="number" class="form-control" name="soil_moisture" value="{{ request.POST.soil_moisture|default:'25.0' }}"
+            placeholder="e.g. 25" step="0.1" min="0" max="100" required>
+          <small class="text-muted">Current field moisture level</small>
         </div>
 
         <div class="col-md-6 mb-3">
-          <label for="organic_carbon">Organic Carbon (%)</label>
-          <input type="number" class="form-control" name="organic_carbon" value="{{ request.POST.organic_carbon }}"
-            placeholder="e.g. 1.5" step="0.1" required>
+          <label for="organic_carbon">🌿 Organic Carbon (%)</label>
+          <input type="number" class="form-control" name="organic_carbon" value="{{ request.POST.organic_carbon|default:'1.5' }}"
+            placeholder="e.g. 1.5" step="0.1" min="0" max="10" required>
+          <small class="text-muted">Soil organic matter content</small>
         </div>
 
+        <!-- Farm Inputs -->
         <div class="col-md-6 mb-3">
-          <label for="fertilizer">Fertilizer (kg/ha)</label>
-          <input type="number" class="form-control" name="fertilizer" value="{{ request.POST.fertilizer }}"
-            placeholder="e.g. 100" step="0.1" required>
+          <label for="fertilizer">🧪 Fertilizer (kg/ha)</label>
+          <input type="number" class="form-control" name="fertilizer" value="{{ request.POST.fertilizer|default:'100' }}"
+            placeholder="e.g. 100" step="0.1" min="0" max="500" required>
+          <small class="text-muted">Total fertilizer application</small>
         </div>
 
+        <!-- Timing -->
         <div class="col-md-6 mb-3">
-          <label for="planting_date">Planting Date</label>
+          <label for="planting_date">📅 Planting Date</label>
           <input type="date" class="form-control" name="planting_date" value="{{ request.POST.planting_date }}"
             required>
+          <small class="text-muted">Expected or actual planting date</small>
+        </div>
+
+        <!-- Optional Fields for Business Planning -->
+        <div class="col-12">
+          <h5 class="mb-3 mt-4">💰 Business Planning (Optional)</h5>
         </div>
 
         <div class="col-md-6 mb-3">
-          <label for="prev_yield">Previous Yield (tons/ha)</label>
-          <input type="number" class="form-control" name="prev_yield" value="{{ request.POST.prev_yield }}"
-            placeholder="e.g. 3.5" step="0.1" required>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="market_price">Market Price (KES/ton)</label>
+          <label for="market_price">💵 Expected Market Price (KES/ton)</label>
           <input type="number" class="form-control" name="market_price" value="{{ request.POST.market_price }}"
-            placeholder="e.g. 90000" step="0.1" required>
+            placeholder="Leave blank for current prices" step="0.1" min="0">
+          <small class="text-muted">Current default prices used if empty</small>
         </div>
 
         <div class="col-md-6 mb-3">
-          <label for="labour_cost">Labour Cost (KES/ha)</label>
+          <label for="labour_cost">👷 Labour Cost (KES/ha)</label>
           <input type="number" class="form-control" name="labour_cost" value="{{ request.POST.labour_cost }}"
-            placeholder="e.g. 10000" step="0.1" required>
+            placeholder="Optional - for detailed profit analysis" step="0.1" min="0">
         </div>
+      </div>
 
-        <div class="col-md-6 mb-3">
-          <label for="storage_loss">Storage Loss (%)</label>
-          <input type="number" class="form-control" name="storage_loss" value="{{ request.POST.storage_loss }}"
-            placeholder="e.g. 15" step="0.1" required>
+      <button type="submit" class="btn btn-success btn-lg mt-3">
+        <span id="predictText">🚀 Predict Yield</span>
+      </button>
+
+      <!-- Progress Bar -->
+      <div id="progressContainer" style="display: none;">
+        <label class="form-label mt-3">⏳ Processing your prediction...</label>
+        <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" id="progressBar"></div>
         </div>
-
-
-        <button type="submit" class="btn btn-success mt-3">Predict Yield</button>
-
-        <!-- Progress Bar -->
-        <div id="progressContainer" style="display: none;">
-          <label class="form-label mt-3">⏳ Processing your prediction...</label>
-          <div class="progress">
-              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" id="progressBar"></div>
-          </div>
       </div>
     </form>
 
     {% if yield_pred %}
     <div class="mt-5">
-      <h3>✅ Prediction Results</h3>
-      <ul class="list-group">
-        <li class="list-group-item">Predicted Yield: <strong>{{ yield_pred }} tons/ha</strong></li>
-        <li class="list-group-item">
-          Optimal Harvest Window: <strong>{{ best_days }}</strong>
-        </li>
-        <li class="list-group-item">Estimated Net Profit: <strong>{{ best_profit }} KES/ha</strong></li>
-        <li class="list-group-item">Rainfall: {{ weather.rainfall }} mm</li>
-        <li class="list-group-item">Temperature: {{ weather.temperature}} °C</li>
-        <li class="list-group-item">Humidity: {{ weather.humidity }} %</li>
-      </ul>
+      <div class="alert alert-success">
+        <h3>✅ Prediction Results</h3>
+      </div>
+      
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">📊 Yield Prediction</h5>
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>Predicted Yield:</span>
+                  <strong>{{ yield_pred }} tons/ha</strong>
+                </li>
+                {% if yield_range %}
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>Confidence Range:</span>
+                  <strong>{{ yield_range.0 }} - {{ yield_range.1 }} tons/ha</strong>
+                </li>
+                {% endif %}
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>Harvest Window:</span>
+                  <strong>{{ harvest_window|default:'90-120 days' }}</strong>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
 
-      {% if weather.fallback %}
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">💰 Economics</h5>
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>Estimated Revenue:</span>
+                  <strong>{{ net_profit|floatformat:0 }} KES/ha</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>Risk Level:</span>
+                  <span class="badge bg-{{ risk_level|default:'secondary' }}">{{ risk_level|default:'Medium'|title }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weather Info -->
+      <div class="mt-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">🌤️ Weather Conditions</h5>
+            <div class="row">
+              <div class="col-4">
+                <div class="text-center">
+                  <div class="h4 text-primary">{{ weather.rainfall|floatformat:1 }}mm</div>
+                  <small class="text-muted">Rainfall</small>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-center">
+                  <div class="h4 text-warning">{{ weather.temperature|floatformat:1 }}°C</div>
+                  <small class="text-muted">Temperature</small>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-center">
+                  <div class="h4 text-info">{{ weather.humidity|floatformat:1 }}%</div>
+                  <small class="text-muted">Humidity</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Recommendations -->
+      {% if ai_recommendations %}
+      <div class="mt-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">🤖 AI Recommendations</h5>
+            <ul class="list-group list-group-flush">
+              {% for recommendation in ai_recommendations %}
+              <li class="list-group-item">💡 {{ recommendation }}</li>
+              {% endfor %}
+            </ul>
+            {% if risk_reason %}
+            <div class="alert alert-info mt-3 mb-0">
+              <strong>Risk Assessment:</strong> {{ risk_reason }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if fallback_used %}
       <div class="alert alert-warning mt-3">
-        ⚠️ The location you selected was not in our API-supported database. A fallback weather location was used.
+        ⚠️ <strong>Note:</strong> Some data was estimated due to limited availability. Results may be less accurate.
       </div>
       {% endif %}
     </div>
@@ -119,6 +228,19 @@
   const form = document.getElementById('yieldForm');
   const progressContainer = document.getElementById('progressContainer');
   const progressBar = document.getElementById('progressBar');
+  const predictText = document.getElementById('predictText');
+  const cropSelect = document.getElementById('cropSelect');
+
+  // Update predict button text based on crop selection
+  cropSelect.addEventListener('change', function() {
+    const crop = this.value;
+    if (crop) {
+      const cropName = this.options[this.selectedIndex].text.split(' ')[1]; // Get crop name without emoji
+      predictText.textContent = `🚀 Predict ${cropName} Yield`;
+    } else {
+      predictText.textContent = '🚀 Predict Yield';
+    }
+  });
 
   form.addEventListener('submit', () => {
     progressContainer.style.display = 'block';
@@ -132,5 +254,12 @@
       }
     }, 300);
   });
+
+  // Set default planting date to today if not set
+  const plantingDateField = document.querySelector('input[name="planting_date"]');
+  if (!plantingDateField.value) {
+    const today = new Date().toISOString().split('T')[0];
+    plantingDateField.value = today;
+  }
 </script>
 {% endblock %}
