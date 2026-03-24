@@ -2,13 +2,17 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR.parent / '.env')
+
+MODEL_DIR = BASE_DIR.parent / 'models'
+RAG_DATA_DIR = BASE_DIR.parent / 'rag_data'
+QWEN_MODEL_PATH = BASE_DIR.parent / 'qwen35_cropai_lora_final'
 
 FORECAST_URL = os.getenv('OPENWEATHER_FORECAST_URL')
 API_KEY = os.getenv("API_KEY")
 BASE_URL = os.getenv("BASE_URL")
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-*yb&jw_$oojubya%ate5j@vjix%c)vhvi+j1n15h72jtw9h=23'
 
@@ -16,9 +20,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory for collected static files
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'yield_predictor' / 'static',
 ]
@@ -68,7 +71,7 @@ ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 # Session will expire after 5 minutes of inactivity
-SESSION_COOKIE_AGE = 5 * 60  # 5 minutes in seconds
+SESSION_COOKIE_AGE = 20 * 60  # 20 minutes in seconds
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True
 
