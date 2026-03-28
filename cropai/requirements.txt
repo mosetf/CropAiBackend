@@ -6,7 +6,7 @@ charset-normalizer==3.4.6
 click==8.3.1
 crispy-bootstrap5==2025.4
 Django==5.2.8
-django-allauth==65.3.1
+django-allauth==65.14.1
 django-crispy-forms==2.4
 faiss-cpu==1.8.0
 filelock==3.25.2
@@ -35,7 +35,7 @@ python-dotenv==1.1.1
 pytz==2026.1.post1
 PyYAML==6.0.3
 regex==2026.2.28
-requests==2.32.5
+requests==2.33.0
 rich==14.3.3
 safetensors==0.7.0
 scikit-learn==1.8.0
