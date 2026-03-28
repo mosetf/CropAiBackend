@@ -35,140 +35,115 @@ class CropAdvisorRAG:
     
     def _load_model(self):
         """Load the fine-tuned Qwen model with LoRA adapters."""
-        try:
-            from transformers import AutoConfig
-            
-            base_model_id = "unsloth/Qwen3.5-0.8B"
-            
-            config = AutoConfig.from_pretrained(
-                base_model_id, 
-                trust_remote_code=True
-            )
-            
-            if hasattr(config, 'text_config'):
-                for key, value in vars(config.text_config).items():
-                    setattr(config, key, value)
-            
-            base_model = AutoModelForCausalLM.from_pretrained(
-                base_model_id,
-                config=config,
-                device_map="auto",
-                torch_dtype=torch.float16 if torch.backends.mps.is_available() else torch.float32,
-                trust_remote_code=True
-            )
-            
-            if self.model_path and os.path.exists(self.model_path):
-                self.model = PeftModel.from_pretrained(base_model, self.model_path)
-            else:
-                self.model = base_model
-            
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                tokenizer_path, 
-                trust_remote_code=True
-            )
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-                 
-        except Exception as e:
-            self.model = None
-            self.tokenizer = None
+        from transformers import AutoConfig
+        
+        base_model_id = "unsloth/Qwen3.5-0.8B"
+        
+        config = AutoConfig.from_pretrained(
+            base_model_id, 
+            trust_remote_code=True
+        )
+        
+        if hasattr(config, 'text_config'):
+            for key, value in vars(config.text_config).items():
+                setattr(config, key, value)
+        
+        base_model = AutoModelForCausalLM.from_pretrained(
+            base_model_id,
+            config=config,
+            device_map="auto",
+            torch_dtype=torch.float16 if torch.backends.mps.is_available() else torch.float32,
+            trust_remote_code=True
+        )
+        
+        if self.model_path and os.path.exists(self.model_path):
+            self.model = PeftModel.from_pretrained(base_model, self.model_path)
+        else:
+            self.model = base_model
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            base_model_id, 
+            trust_remote_code=True
+        )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
     
     def _load_rag_components(self):
         """Load RAG components: embedder, FAISS index, and documents."""
-        try:
-            embedder_path = os.path.join(self.rag_data_path, "rag_embedder_name.txt")
-            if os.path.exists(embedder_path):
-                with open(embedder_path, 'r') as f:
-                    embedder_name = f.read().strip()
-                self.embedder = SentenceTransformer(embedder_name)
-            
-            index_path = os.path.join(self.rag_data_path, "rag_index.faiss")
-            if os.path.exists(index_path):
-                self.faiss_index = faiss.read_index(index_path)
-            
-            docs_path = os.path.join(self.rag_data_path, "rag_docs.pkl")
-            if os.path.exists(docs_path):
-                with open(docs_path, 'rb') as f:
-                    self.documents = pickle.load(f)
-                 
-        except Exception as e:
-            self.embedder = None
-            self.faiss_index = None
-            self.documents = []
+        embedder_path = os.path.join(self.rag_data_path, "rag_embedder_name.txt")
+        if os.path.exists(embedder_path):
+            with open(embedder_path, 'r') as f:
+                embedder_name = f.read().strip()
+            self.embedder = SentenceTransformer(embedder_name)
+        
+        index_path = os.path.join(self.rag_data_path, "rag_index.faiss")
+        if os.path.exists(index_path):
+            self.faiss_index = faiss.read_index(index_path)
+        
+        docs_path = os.path.join(self.rag_data_path, "rag_docs.pkl")
+        if os.path.exists(docs_path):
+            with open(docs_path, 'rb') as f:
+                self.documents = pickle.load(f)
     
     def _retrieve_relevant_docs(self, query: str, top_k: int = 2) -> List[str]:
         """Retrieve relevant documents for the query."""
         if not all([self.embedder, self.faiss_index, self.documents]):
             return []
         
-        try:
-            query_embedding = self.embedder.encode([query])
-            query_embedding = query_embedding.astype('float32')
-            
-            # Search FAISS index
-            scores, indices = self.faiss_index.search(query_embedding, top_k)
-            
-            relevant_docs = []
-            for idx in indices[0]:
-                if 0 <= idx < len(self.documents):
-                    relevant_docs.append(self.documents[idx])
-            
-            return relevant_docs
-            
-        except Exception as e:
-            return []
+        query_embedding = self.embedder.encode([query])
+        query_embedding = query_embedding.astype('float32')
+        
+        scores, indices = self.faiss_index.search(query_embedding, top_k)
+        
+        relevant_docs = []
+        for idx in indices[0]:
+            if 0 <= idx < len(self.documents):
+                relevant_docs.append(self.documents[idx])
+        
+        return relevant_docs
     
     def _generate_response(self, messages: list, max_new_tokens: int = 250) -> str:
         """Generate response using the fine-tuned model with messages format."""
         if not (self.model and self.tokenizer):
-            return ''
+            raise RuntimeError("Model or tokenizer not initialized")
         
-        try:
-            import re
-            
-            text = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=False,
+        import re
+        
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+        
+        inputs = self.tokenizer(
+            [text],
+            return_tensors='pt',
+            padding=True,
+            return_attention_mask=True,
+        )
+        input_ids = inputs['input_ids'].to(self.model.device)
+        attention_mask = inputs['attention_mask'].to(self.model.device)
+        
+        think_token_ids = self.tokenizer.encode('<think>', add_special_tokens=False)
+        
+        with torch.no_grad():
+            outputs = self.model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=max_new_tokens,
+                temperature=0.7,
+                top_p=0.9,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id,
+                suppress_tokens=think_token_ids if think_token_ids else None,
             )
-            
-            inputs = self.tokenizer(
-                [text],
-                return_tensors='pt',
-                padding=True,
-                return_attention_mask=True,
-            )
-            input_ids = inputs['input_ids'].to(self.model.device)
-            attention_mask = inputs['attention_mask'].to(self.model.device)
-            
-            think_token_ids = self.tokenizer.encode('<think>', add_special_tokens=False)
-            
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    max_new_tokens=max_new_tokens,
-                    temperature=0.7,
-                    top_p=0.9,
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                    # Suppress <think> token to force non-thinking output
-                    suppress_tokens=think_token_ids if think_token_ids else None,
-                )
-            
-            new_tokens = outputs[0][input_ids.shape[1]:]
-            response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
-            response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
-            return response
-            
-        except Exception as e:
-            return ''
-    
-    def _fallback_response(self) -> str:
-        """Fallback response when model is not available."""
-        return "Model temporarily unavailable. Please ensure proper soil preparation, adequate fertilization, and monitor weather conditions for optimal yield."
+        
+        new_tokens = outputs[0][input_ids.shape[1]:]
+        response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+        return response
     
     def get_recommendations(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -192,7 +167,7 @@ class CropAdvisorRAG:
         relevant_docs = self._retrieve_relevant_docs(query, top_k=2)
         
         if not self.model:
-            return self._rag_enhanced_fallback(context, relevant_docs)
+            raise RuntimeError("Model not initialized - cannot generate recommendations")
         
         doc_texts = []
         for doc in relevant_docs:
@@ -237,101 +212,25 @@ class CropAdvisorRAG:
             "full_response": response
         }
     
-    def _rag_enhanced_fallback(self, context: Dict[str, Any], relevant_docs: List[str]) -> Dict[str, Any]:
-        """
-        Enhanced fallback that uses RAG documents when model isn't loaded.
-        """
-        crop = context.get("crop", "maize")
-        yield_pred = context.get("yield", 0)
-        rainfall = context.get("rainfall", 500)
-        temp = context.get("temp", 20)
-        soil_ph = context.get("soil_ph", 6.5)
-        fertilizer = context.get("fertilizer", 100)
-        
-        # Base recommendations
-        recommendations = []
-        
-        # Add RAG-based recommendations if available
-        if relevant_docs:
-            print(f"📚 Using {len(relevant_docs)} RAG documents for recommendations")
-            for doc in relevant_docs[:1]:  # Use first doc
-                # Extract content from document dict
-                doc_content = doc.get('content', '') if isinstance(doc, dict) else str(doc)
-                if crop in doc_content.lower():
-                    # Extract first sentence or key point
-                    first_line = doc_content.strip().split('\n')[0].strip()
-                    recommendations.append(f"Kenya agricultural data: {first_line[:120]}...")
-        
-        # Add context-specific recommendations
-        if yield_pred < 1.5:
-            recommendations.append(f"Your predicted {crop} yield ({yield_pred:.2f} t/ha) is below average. Consider: increasing fertilizer application, improving soil preparation, and selecting high-yield varieties.")
-        elif yield_pred < 2.5:
-            recommendations.append(f"Moderate yield predicted ({yield_pred:.2f} t/ha). Optimize with: timely planting, balanced NPK fertilization (current: {fertilizer} kg/ha), and proper spacing.")
-        else:
-            recommendations.append(f"Good yield potential ({yield_pred:.2f} t/ha). Maintain by: following recommended practices, monitoring for pests/diseases, and ensuring adequate moisture.")
-        
-        if rainfall < 600:
-            recommendations.append(f"Low rainfall season ({rainfall}mm predicted). Implement water conservation: mulching, drought-resistant varieties, and supplementary irrigation if possible.")
-        elif rainfall > 1200:
-            recommendations.append(f"High rainfall expected ({rainfall}mm). Prepare for: improved drainage, fungal disease prevention, and timely weeding to prevent waterlogging.")
-        
-        if soil_ph < 5.5:
-            recommendations.append(f"Acidic soil (pH {soil_ph}). Apply lime to raise pH to 6.0-6.5 for optimal {crop} growth and nutrient availability.")
-        elif soil_ph > 7.5:
-            recommendations.append(f"Alkaline soil (pH {soil_ph}). Consider organic matter addition and sulfur application to lower pH for better {crop} performance.")
-        
-        # Take top 4 recommendations
-        recommendations = recommendations[:4]
-        
-        # If still no recommendations, use defaults
-        if not recommendations:
-            recommendations = [
-                f"Plant {crop} at the beginning of the rainy season for optimal germination",
-                "Apply balanced fertilizer based on soil test results",
-                "Monitor weather conditions and adjust farming practices accordingly",
-                "Practice crop rotation to maintain soil health"
-            ]
-        
-        risk_level = self._assess_risk_level(context)
-        
-        return {
-            "recommendations": recommendations,
-            "risk_level": risk_level,
-            "risk_reason": self._get_risk_reason(context, risk_level),
-            "rag_docs_used": len(relevant_docs)
-        }
-    
     def _parse_recommendations(self, response: str) -> List[str]:
         """Parse the model response into structured recommendations."""
-        try:
-            import re
-            lines = response.split('\n')
-            recommendations = []
-            
-            for line in lines:
-                line = line.strip()
-                line = re.sub(r'\*\*.*?\*\*:?\s*', '', line).strip()
-                line = line.lstrip('0123456789.-• ').strip()
-                if len(line) > 25 and not line.endswith(':'):
-                    recommendations.append(line)
-                if len(recommendations) >= 3:
-                    break
-            
-            if not recommendations:
-                recommendations = [
-                    "Apply balanced NPK fertilizer based on soil test results.",
-                    "Ensure adequate water management and drainage.",
-                    "Monitor for pests and diseases regularly.",
-                ]
-            
-            return recommendations[:3]
-            
-        except Exception:
-            return [
-                "Follow good agricultural practices for optimal yield.",
-                "Monitor soil and weather conditions regularly.",
-                "Consider consulting local agricultural extension services."
-            ]
+        import re
+        lines = response.split('\n')
+        recommendations = []
+        
+        for line in lines:
+            line = line.strip()
+            line = re.sub(r'\*\*.*?\*\*:?\s*', '', line).strip()
+            line = line.lstrip('0123456789.-• ').strip()
+            if len(line) > 25 and not line.endswith(':'):
+                recommendations.append(line)
+            if len(recommendations) >= 3:
+                break
+        
+        if not recommendations:
+            raise ValueError("Failed to parse recommendations from model response")
+        
+        return recommendations[:3]
     
     def _assess_risk_level(self, context: Dict[str, Any]) -> str:
         """Assess risk level based on context."""
