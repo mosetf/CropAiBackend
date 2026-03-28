@@ -1,0 +1,448 @@
+<!-- Django HTML Template - Clean Green Dashboard -->
+{% extends 'base.html' %}
+{% load static extras %}
+
+{% block title %}CropAI Kenya Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+/* Clean Green Theme with White Background */
+body {
+    background: #FFFFFF !important;
+    min-height: 100vh !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+.dashboard-header {
+    background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%) !important;
+    color: white !important;
+    padding: 2rem 0 !important;
+    margin-bottom: 2rem !important;
+    box-shadow: 0 4px 12px rgba(27, 94, 32, 0.3) !important;
+}
+
+.dashboard-header h1 {
+    color: white !important;
+    font-weight: 700 !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dashboard-header p {
+    color: #C8E6C9 !important;
+    font-size: 1.1rem !important;
+    opacity: 0.9 !important;
+}
+
+.crop-card {
+    background: white !important;
+    border-radius: 16px !important;
+    border: 2px solid #E8F5E8 !important;
+    box-shadow: 0 8px 24px rgba(27, 94, 32, 0.15) !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+    margin-bottom: 1.5rem !important;
+    position: relative !important;
+}
+
+.crop-card:hover {
+    transform: translateY(-8px) !important;
+    box-shadow: 0 16px 40px rgba(27, 94, 32, 0.25) !important;
+    border-color: #81C784 !important;
+}
+
+.crop-card .card-header {
+    background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 1.5rem !important;
+    text-align: center !important;
+}
+
+.crop-card .card-header h5 {
+    color: white !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    font-size: 1.3rem !important;
+}
+
+.crop-card.active {
+    border: 3px solid #4CAF50 !important;
+}
+
+.crop-card.active::before {
+    content: "ACTIVE" !important;
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    background: #4CAF50 !important;
+    color: white !important;
+    padding: 4px 12px !important;
+    border-radius: 20px !important;
+    font-size: 0.8rem !important;
+    font-weight: bold !important;
+    z-index: 10 !important;
+}
+
+.crop-card.coming-soon::after {
+    content: "🚧 COMING SOON" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    background: rgba(46, 125, 50, 0.95) !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 25px !important;
+    font-weight: bold !important;
+    z-index: 5 !important;
+}
+
+.crop-card.coming-soon .card-body {
+    filter: blur(1px) !important;
+}
+
+.crop-card .card-body {
+    padding: 2rem !important;
+    background: #FFFFFF !important;
+}
+
+.btn-predict {
+    background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 24px !important;
+    border-radius: 25px !important;
+    font-weight: bold !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    text-decoration: none !important;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3) !important;
+}
+
+.btn-predict:hover {
+    background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    text-decoration: none !important;
+    box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4) !important;
+}
+
+.crop-icon {
+    font-size: 3rem !important;
+    margin-bottom: 1rem !important;
+    display: block !important;
+    text-align: center !important;
+}
+
+.info-section {
+    background: #FFFFFF !important;
+    border: 2px solid #E8F5E8 !important;
+    border-radius: 16px !important;
+    padding: 2rem !important;
+    margin: 2rem 0 !important;
+    box-shadow: 0 8px 24px rgba(27, 94, 32, 0.1) !important;
+}
+
+.info-section h4 {
+    color: #1B5E20 !important;
+    font-weight: 700 !important;
+}
+
+.info-section p {
+    color: #2E7D32 !important;
+}
+
+/* Prediction History Card Styles */
+.prediction-card {
+    transition: all 0.3s ease !important;
+}
+
+.prediction-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 12px 32px rgba(27, 94, 32, 0.15) !important;
+}
+
+.metric-card {
+    transition: all 0.2s ease !important;
+}
+
+.metric-card:hover {
+    transform: scale(1.02) !important;
+}
+
+.weather-metric {
+    transition: all 0.2s ease !important;
+}
+
+.weather-metric:hover {
+    transform: scale(1.05) !important;
+}
+
+/* Animation for prediction cards */
+.prediction-card {
+    animation: slideInUp 0.6s ease-out !important;
+}
+
+.prediction-card:nth-child(1) { animation-delay: 0.1s !important; }
+.prediction-card:nth-child(2) { animation-delay: 0.2s !important; }
+.prediction-card:nth-child(3) { animation-delay: 0.3s !important; }
+.prediction-card:nth-child(4) { animation-delay: 0.4s !important; }
+.prediction-card:nth-child(5) { animation-delay: 0.5s !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Farmer-themed header -->
+<div class="dashboard-header">
+    <div class="container">
+        <div class="text-center">
+            <h1 class="display-4 mb-3">Welcome to CropAI Kenya</h1>
+            <p class="lead">Choose your crop to get AI-powered yield predictions and farming insights</p>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <!-- Crop Selection Grid -->
+    <div class="row g-4 mb-5">
+        {% for crop_code, crop_label in available_crops %}
+        <div class="col-md-4">
+            <div class="card crop-card active h-100">
+                <div class="card-header">
+                    <h5>{{ crop_label }}</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">AI-powered yield prediction for {{ crop_label|lower }} farming in Kenya.</p>
+                    <a href="{% url 'yield_predictor:predict_yield' %}" class="btn btn-predict">
+                        <i class="fas fa-chart-line"></i> Start Prediction
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for crop_code in coming_soon_crops %}
+        <div class="col-md-4">
+            <div class="card crop-card coming-soon h-100">
+                <div class="card-header">
+                    <h5>{{ crop_code|title }}</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text">AI-powered yield prediction for {{ crop_code|lower }} farming in Kenya. Coming soon!</p>
+                    <button class="btn btn-predict" disabled>
+                        <i class="fas fa-clock"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Information Section -->
+    <div class="row mb-5">
+        <div class="col-md-10 mx-auto">
+            <div class="info-section text-center">
+                <h4><i class="fas fa-info-circle"></i> What's Growing Next?</h4>
+                <p>We're cultivating AI models for Kenya's major crops. Each model is trained on local soil data, weather patterns, and proven agricultural practices to deliver the most accurate predictions for your farm.</p>
+                <div class="row text-center mt-4">
+                    <div class="col-md-3">
+                        <i class="fas fa-brain fa-2x mb-2" style="color: #1B5E20;"></i>
+                        <small class="d-block" style="color: #2E7D32; font-weight: 600;">AI-Powered</small>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="fas fa-map-marker-alt fa-2x mb-2" style="color: #4CAF50;"></i>
+                        <small class="d-block" style="color: #2E7D32; font-weight: 600;">Kenya-Specific</small>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="fas fa-cloud-sun fa-2x mb-2" style="color: #66BB6A;"></i>
+                        <small class="d-block" style="color: #2E7D32; font-weight: 600;">Weather-Smart</small>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="fas fa-chart-line fa-2x mb-2" style="color: #81C784;"></i>
+                        <small class="d-block" style="color: #2E7D32; font-weight: 600;">Profit-Focused</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Previous Predictions Section (if any exist) -->
+    {% if predictions %}
+    <!-- Summary Analytics -->
+    <div class="card" style="background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%); color: white; border-radius: 16px; margin-bottom: 2rem;">
+        <div class="card-header" style="background: transparent; border: none;">
+            <h4 class="mb-0" style="color: white;"><i class="fas fa-chart-line"></i> 📊 Your Farming Analytics Summary</h4>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h6 style="color: #C8E6C9;">Total Predictions</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions|length }}</p>
+                </div>
+                <div class="col-md-3">
+                    <h6 style="color: #C8E6C9;">Latest Prediction</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions.0.created_at|date:"M d, Y" }}</p>
+                </div>
+                <div class="col-md-3">
+                    <h6 style="color: #C8E6C9;">Latest Location</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions.0.location }}</p>
+                </div>
+                <div class="col-md-3">
+                    <h6 style="color: #C8E6C9;">Latest Yield</h6>
+                    <p class="fw-bold" style="color: white; font-size: 1.2rem;">{{ predictions.0.predicted_yield|floatformat:1 }} tons/ha</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Predictions History -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-4" style="color: #1B5E20; font-weight: 700;">
+                <i class="fas fa-history"></i> Detailed Prediction History
+            </h4>
+        </div>
+    </div>
+
+    {% for prediction in predictions %}
+    <div class="card mb-4 prediction-card" style="background: white; border: 2px solid #E8F5E8; border-radius: 16px; box-shadow: 0 8px 24px rgba(27, 94, 32, 0.1);">
+        <div class="card-header" style="background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%); color: white; border: none; border-radius: 14px 14px 0 0;">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-1" style="color: white;">
+                        <i class="fas fa-map-marker-alt"></i> {{ prediction.location }}
+                        {% if prediction.fallback_used %}
+                        <span class="badge" style="background: #81C784; color: #1B5E20; font-size: 0.7rem;">Fallback Weather</span>
+                        {% endif %}
+                    </h5>
+                    <small style="color: #C8E6C9;">
+                        <i class="fas fa-calendar"></i> Planting Date: {{ prediction.planting_date|date:"F d, Y" }} | 
+                        <i class="fas fa-clock"></i> Predicted: {{ prediction.created_at|date:"M d, Y - g:i A" }}
+                    </small>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge" style="background: #4CAF50; color: white; padding: 8px 12px; font-size: 0.9rem;">
+                        Prediction #{{ forloop.revcounter }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body" style="padding: 2rem;">
+            <div class="row">
+                <!-- Yield & Profit Metrics -->
+                <div class="col-md-6">
+                    <h6 style="color: #1B5E20; font-weight: 600; margin-bottom: 1rem;">
+                        <i class="fas fa-chart-bar"></i> Yield & Profit Metrics
+                    </h6>
+                    <div class="row">
+                        <div class="col-sm-6 mb-3">
+                            <div class="p-3 metric-card" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #4CAF50;">
+                                <small class="text-muted">Predicted Yield</small>
+                                <div style="font-size: 1.4rem; font-weight: bold; color: #1B5E20;">
+                                    {{ prediction.predicted_yield|floatformat:2 }} <small>tons/ha</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 mb-3">
+                            <div class="p-3 metric-card" style="background: #E8F5E8; border-radius: 12px; border-left: 4px solid #66BB6A;">
+                                <small class="text-muted">Net Profit</small>
+                                <div style="font-size: 1.4rem; font-weight: bold; color: #1B5E20;">
+                                    {% if prediction.net_profit >= 1000000 %}
+                                        KSh {{ prediction.net_profit|floatformat:0|slice:":6" }}k
+                                    {% else %}
+                                        KSh {{ prediction.net_profit|floatformat:0 }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 mb-3" style="background: #C8E6C9; border-radius: 12px;">
+                        <small class="text-muted">Harvest Window</small>
+                        <div style="font-weight: 600; color: #1B5E20;">
+                            <i class="fas fa-calendar-check"></i> {{ prediction.harvest_window }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Conditions -->
+                <div class="col-md-6">
+                    <h6 style="color: #1B5E20; font-weight: 600; margin-bottom: 1rem;">
+                        <i class="fas fa-cloud-sun"></i> Weather Conditions
+                    </h6>
+                    <div class="row">
+                        <div class="col-sm-4 mb-3">
+                            <div class="text-center p-3 weather-metric" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
+                                <i class="fas fa-cloud-rain fa-2x mb-2"></i>
+                                <div style="font-weight: bold;">{{ prediction.rainfall|floatformat:1 }}mm</div>
+                                <small>Rainfall</small>
+                            </div>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <div class="text-center p-3 weather-metric" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
+                                <i class="fas fa-thermometer-half fa-2x mb-2"></i>
+                                <div style="font-weight: bold;">{{ prediction.temperature|floatformat:1 }}°C</div>
+                                <small>Temperature</small>
+                            </div>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <div class="text-center p-3 weather-metric" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border-radius: 12px; color: #1B5E20;">
+                                <i class="fas fa-tint fa-2x mb-2"></i>
+                                <div style="font-weight: bold;">{{ prediction.humidity|floatformat:0 }}%</div>
+                                <small>Humidity</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction Quality Indicator -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="p-3" style="background: {% if prediction.fallback_used %}#FFF3E0{% else %}#E8F5E8{% endif %}; border-radius: 12px; border: 1px solid {% if prediction.fallback_used %}#FFB74D{% else %}#4CAF50{% endif %};">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <strong style="color: {% if prediction.fallback_used %}#F57C00{% else %}#1B5E20{% endif %};">
+                                    {% if prediction.fallback_used %}
+                                    <i class="fas fa-exclamation-triangle"></i> Weather data from fallback source
+                                    {% else %}
+                                    <i class="fas fa-check-circle"></i> High-quality weather data used
+                                    {% endif %}
+                                </strong>
+                                <div style="font-size: 0.9rem; color: #666; margin-top: 4px;">
+                                    {% if prediction.fallback_used %}
+                                    This prediction used general weather data when location-specific data wasn't available.
+                                    {% else %}
+                                    This prediction used accurate location-specific weather data for maximum precision.
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <span class="badge" style="background: {% if prediction.fallback_used %}#FFB74D{% else %}#4CAF50{% endif %}; color: white; padding: 6px 12px;">
+                                    {% if prediction.fallback_used %}Standard{% else %}Premium{% endif %} Quality
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="alert" style="background: linear-gradient(135deg, #81C784 0%, #C8E6C9 100%); border: none; color: #1B5E20; text-align: center; border-radius: 12px;">
+        <h5><i class="fas fa-seedling"></i> Ready to Start Farming Smarter?</h5>
+        <p>No maize predictions yet. Click on the Maize card above to start your first AI-powered yield prediction!</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if predictions %}
+<!-- Chart data for JavaScript -->
+<script id="chart-data" type="application/json">{{ chart_data_json|safe }}</script>
+{% endif %}
+
+<!-- Dashboard JavaScript -->
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

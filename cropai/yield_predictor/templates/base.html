@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}CropAI Kenya{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/predict.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+          <!-- Brand changes depending on the page -->
+          <a class="navbar-brand fw-bold" href="{% url 'yield_predictor:dashboard' %}">
+            {% block header_brand %}
+              {% if request.path == '/' %}
+                CropAI Kenya
+              {% elif 'account' in request.path %}
+                CropAI Kenya
+              {% elif request.path == '/dashboard/' %}
+                CropAI Kenya - Dashboard
+              {% else %}
+                CropAI Kenya
+              {% endif %}
+            {% endblock %}
+          </a>
+      
+          <div class="ms-auto">
+            {% if user.is_authenticated %}
+            <div class="dropdown">
+              <a class="btn btn-outline-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-user"></i> {{ user.username }}
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url 'yield_predictor:dashboard' %}">📊 My Dashboard</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-info-circle"></i> About</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'account_logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+              </ul>
+            </div>
+            {% else %}
+            <ul class="navbar-nav d-flex flex-row gap-3">
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/accounts/login/' %}active{% endif %}" href="{% url 'account_login' %}">
+                  <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/accounts/signup/' %}active{% endif %}" href="{% url 'account_signup' %}">
+                  <i class="fas fa-user-plus"></i> Sign Up
+                </a>
+              </li>
+            </ul>
+            {% endif %}
+          </div>
+        </div>
+      </nav>
+
+    <!-- Inactivity Warning Modal -->
+    <div class="modal fade" id="idleWarningModal" tabindex="-1" aria-labelledby="idleWarningModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title" id="idleWarningModalLabel">⚠️ You’ve been inactive</h5>
+          </div>
+          <div class="modal-body">
+            You’ll be logged out in <span id="countdown">60</span> seconds due to inactivity.<br>
+            Click anywhere or press a key to stay logged in.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container mt-5">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% if user.is_authenticated %}
+    <script>
+      (function () {
+          const idleLimit = 4 * 60 * 1000; // Warn after 5 minutes
+          const logoutLimit = 60 * 1000;    // Then log out after 1 minute
+          let idleTimer, logoutTimer;
+          let countdown = 60;
+      
+          const modal = new bootstrap.Modal(document.getElementById('idleWarningModal'));
+          const countdownSpan = document.getElementById('countdown');
+      
+          function resetTimers() {
+              clearTimeout(idleTimer);
+              clearTimeout(logoutTimer);
+              countdown = 60;
+              if (modal._isShown) modal.hide();
+      
+              idleTimer = setTimeout(() => {
+                  modal.show();
+                  startLogoutCountdown();
+              }, idleLimit);
+          }
+      
+          function startLogoutCountdown() {
+              logoutTimer = setInterval(() => {
+                  countdown -= 1;
+                  countdownSpan.textContent = countdown;
+                  if (countdown <= 0) {
+                      clearInterval(logoutTimer);
+                      window.location.href = "{% url 'account_logout' %}";
+                  }
+              }, 1000);
+          }
+      
+          ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt =>
+              document.addEventListener(evt, resetTimers)
+          );
+      
+          resetTimers();
+      })();
+      </script>
+      {% endif %}
+      
+</body>
+</html>
