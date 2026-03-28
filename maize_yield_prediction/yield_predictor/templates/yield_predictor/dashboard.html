@@ -71,7 +71,7 @@ body {
 }
 
 .crop-card.active::before {
-    content: "✅ ACTIVE" !important;
+    content: "ACTIVE" !important;
     position: absolute !important;
     top: 10px !important;
     right: 10px !important;
@@ -197,7 +197,7 @@ body {
 <div class="dashboard-header">
     <div class="container">
         <div class="text-center">
-            <h1 class="display-4 mb-3">🌾 Welcome to CropAI Kenya</h1>
+            <h1 class="display-4 mb-3">Welcome to CropAI Kenya</h1>
             <p class="lead">Choose your crop to get AI-powered yield predictions and farming insights</p>
         </div>
     </div>
@@ -206,111 +206,44 @@ body {
 <div class="container my-5">
     <!-- Crop Selection Grid -->
     <div class="row g-4 mb-5">
-        <!-- Maize - Working -->
+        {% for crop_code, crop_label in available_crops %}
         <div class="col-md-4">
             <div class="card crop-card active h-100">
                 <div class="card-header">
-                    <div class="crop-icon">🌽</div>
-                    <h5>Maize</h5>
+                    <h5>{{ crop_label }}</h5>
                 </div>
                 <div class="card-body text-center">
-                    <p class="card-text">AI-powered yield prediction for Kenya's staple crop. Get insights on optimal planting times, harvest optimization, and profit maximization.</p>
+                    <p class="card-text">AI-powered yield prediction for {{ crop_label|lower }} farming in Kenya.</p>
                     <a href="{% url 'yield_predictor:predict_yield' %}" class="btn btn-predict">
                         <i class="fas fa-chart-line"></i> Start Prediction
                     </a>
                 </div>
             </div>
         </div>
+        {% endfor %}
 
-        <!-- Beans - Coming Soon -->
+        {% for crop_code in coming_soon_crops %}
         <div class="col-md-4">
             <div class="card crop-card coming-soon h-100">
                 <div class="card-header">
-                    <div class="crop-icon">🫘</div>
-                    <h5>Beans</h5>
+                    <h5>{{ crop_code|title }}</h5>
                 </div>
                 <div class="card-body text-center">
-                    <p class="card-text">Smart predictions for common beans, a key protein source and companion crop. Perfect for intercropping optimization.</p>
+                    <p class="card-text">AI-powered yield prediction for {{ crop_code|lower }} farming in Kenya. Coming soon!</p>
                     <button class="btn btn-predict" disabled>
                         <i class="fas fa-clock"></i> Coming Soon
                     </button>
                 </div>
             </div>
         </div>
-
-        <!-- Coffee - Coming Soon -->
-        <div class="col-md-4">
-            <div class="card crop-card coming-soon h-100">
-                <div class="card-header">
-                    <div class="crop-icon">☕</div>
-                    <h5>Coffee</h5>
-                </div>
-                <div class="card-body text-center">
-                    <p class="card-text">Premium coffee yield optimization for Kenya's world-renowned coffee industry. Climate-smart farming insights.</p>
-                    <button class="btn btn-predict" disabled>
-                        <i class="fas fa-clock"></i> Coming Soon
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Row 2 -->
-    <div class="row g-4 mb-5">
-        <!-- Tea - Coming Soon -->
-        <div class="col-md-4">
-            <div class="card crop-card coming-soon h-100">
-                <div class="card-header">
-                    <div class="crop-icon">🍃</div>
-                    <h5>Tea</h5>
-                </div>
-                <div class="card-body text-center">
-                    <p class="card-text">Precision tea farming for Kenya's major export crop. Optimize quality and yield with AI-driven insights.</p>
-                    <button class="btn btn-predict" disabled>
-                        <i class="fas fa-clock"></i> Coming Soon
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Wheat - Coming Soon -->
-        <div class="col-md-4">
-            <div class="card crop-card coming-soon h-100">
-                <div class="card-header">
-                    <div class="crop-icon">🌾</div>
-                    <h5>Wheat</h5>
-                </div>
-                <div class="card-body text-center">
-                    <p class="card-text">Strategic wheat production insights for food security. Optimize planting and harvesting for maximum yield.</p>
-                    <button class="btn btn-predict" disabled>
-                        <i class="fas fa-clock"></i> Coming Soon
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sorghum - Coming Soon -->
-        <div class="col-md-4">
-            <div class="card crop-card coming-soon h-100">
-                <div class="card-header">
-                    <div class="crop-icon">🌾</div>
-                    <h5>Sorghum</h5>
-                </div>
-                <div class="card-body text-center">
-                    <p class="card-text">Drought-resistant crop optimization for arid and semi-arid regions. Climate-resilient farming solutions.</p>
-                    <button class="btn btn-predict" disabled>
-                        <i class="fas fa-clock"></i> Coming Soon
-                    </button>
-                </div>
-            </div>
-        </div>
+        {% endfor %}
     </div>
 
     <!-- Information Section -->
     <div class="row mb-5">
         <div class="col-md-10 mx-auto">
             <div class="info-section text-center">
-                <h4><i class="fas fa-info-circle"></i> 🌱 What's Growing Next?</h4>
+                <h4><i class="fas fa-info-circle"></i> What's Growing Next?</h4>
                 <p>We're cultivating AI models for Kenya's major crops. Each model is trained on local soil data, weather patterns, and proven agricultural practices to deliver the most accurate predictions for your farm.</p>
                 <div class="row text-center mt-4">
                     <div class="col-md-3">
@@ -367,7 +300,7 @@ body {
     <div class="row mb-4">
         <div class="col-12">
             <h4 class="mb-4" style="color: #1B5E20; font-weight: 700;">
-                <i class="fas fa-history"></i> 🌾 Detailed Prediction History
+                <i class="fas fa-history"></i> Detailed Prediction History
             </h4>
         </div>
     </div>
