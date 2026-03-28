@@ -86,6 +86,17 @@ class PredictionInputForm(forms.Form):
         help_text='Expected farm-gate price (KES/tonne). Leave blank for current defaults.',
     )
 
+    labour_cost = forms.FloatField(
+        min_value=0.0,
+        required=False,
+        initial=None,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control', 'step': '1000',
+            'placeholder': 'Optional - for profit analysis',
+        }),
+        help_text='Labour cost (KES/ha). Optional—used for profit calculations.',
+    )
+
     def clean_planting_date(self):
         d = self.cleaned_data['planting_date']
         today = date.today()
@@ -140,4 +151,5 @@ class PredictionInputForm(forms.Form):
                 'organic_carbon': d['organic_carbon'],
             },
             'market_price_override': d.get('market_price'),
+            'labour_cost_override': d.get('labour_cost'),
         }
