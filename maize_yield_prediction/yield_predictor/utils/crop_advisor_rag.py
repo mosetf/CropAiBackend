@@ -1,7 +1,3 @@
-"""
-CropAdvisorRAG - Fine-tuned Qwen3.5 with RAG for agricultural recommendations
-"""
-
 import os
 import pickle
 import torch
@@ -13,7 +9,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from sentence_transformers import SentenceTransformer
 
-# Suppress known non-critical warnings
 warnings.filterwarnings('ignore', message='Found missing adapter keys')
 
 
@@ -43,24 +38,17 @@ class CropAdvisorRAG:
         try:
             from transformers import AutoConfig
             
-            # Use the Unsloth variant - matches adapter training base
             base_model_id = "unsloth/Qwen3.5-0.8B"
             
-            print(f"Loading {base_model_id} with configuration fix...")
-            
-            # 1. Load config separately first
             config = AutoConfig.from_pretrained(
                 base_model_id, 
                 trust_remote_code=True
             )
             
-            # 2. Fix: Manually inject nested text attributes to the top level
-            # Qwen 3.5 nests these in text_config, but standard loaders look at the root
             if hasattr(config, 'text_config'):
                 for key, value in vars(config.text_config).items():
                     setattr(config, key, value)
             
-            # 3. Load base model with corrected config
             base_model = AutoModelForCausalLM.from_pretrained(
                 base_model_id,
                 config=config,
@@ -69,62 +57,41 @@ class CropAdvisorRAG:
                 trust_remote_code=True
             )
             
-            print("✓ Base model loaded from cache")
-            
-            # 4. Load LoRA adapter if path provided
             if self.model_path and os.path.exists(self.model_path):
                 self.model = PeftModel.from_pretrained(base_model, self.model_path)
-                print(f"✓ Loaded fine-tuned LoRA adapter from {self.model_path}")
             else:
                 self.model = base_model
-                print("⚠ Using base model (no fine-tuned adapter found)")
             
-            # 5. Load tokenizer
-            tokenizer_path = self.model_path if self.model_path and os.path.exists(self.model_path) else base_model_id
             self.tokenizer = AutoTokenizer.from_pretrained(
                 tokenizer_path, 
                 trust_remote_code=True
             )
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            print("✓ Qwen model + LoRA adapter loaded successfully")
-                
+                 
         except Exception as e:
-            print(f"⚠ Error loading model: {e}")
-            print("⚠ Falling back to RAG-enhanced recommendations without model")
-            self.model = None
-            self.tokenizer = None
-            # Fallback to basic mode without model
             self.model = None
             self.tokenizer = None
     
     def _load_rag_components(self):
         """Load RAG components: embedder, FAISS index, and documents."""
         try:
-            # Load embedder name
             embedder_path = os.path.join(self.rag_data_path, "rag_embedder_name.txt")
             if os.path.exists(embedder_path):
                 with open(embedder_path, 'r') as f:
                     embedder_name = f.read().strip()
                 self.embedder = SentenceTransformer(embedder_name)
-                print(f"✓ Loaded embedder: {embedder_name}")
             
-            # Load FAISS index
             index_path = os.path.join(self.rag_data_path, "rag_index.faiss")
             if os.path.exists(index_path):
                 self.faiss_index = faiss.read_index(index_path)
-                print(f"✓ Loaded FAISS index with {self.faiss_index.ntotal} documents")
             
-            # Load documents
             docs_path = os.path.join(self.rag_data_path, "rag_docs.pkl")
             if os.path.exists(docs_path):
                 with open(docs_path, 'rb') as f:
                     self.documents = pickle.load(f)
-                print(f"✓ Loaded {len(self.documents)} documents")
-                
+                 
         except Exception as e:
-            print(f"Warning: RAG components not fully loaded: {e}")
             self.embedder = None
             self.faiss_index = None
             self.documents = []
@@ -135,14 +102,12 @@ class CropAdvisorRAG:
             return []
         
         try:
-            # Encode query
             query_embedding = self.embedder.encode([query])
             query_embedding = query_embedding.astype('float32')
             
             # Search FAISS index
             scores, indices = self.faiss_index.search(query_embedding, top_k)
             
-            # Return relevant documents
             relevant_docs = []
             for idx in indices[0]:
                 if 0 <= idx < len(self.documents):
@@ -151,7 +116,6 @@ class CropAdvisorRAG:
             return relevant_docs
             
         except Exception as e:
-            print(f"Error retrieving documents: {e}")
             return []
     
     def _generate_response(self, messages: list, max_new_tokens: int = 250) -> str:
@@ -162,7 +126,6 @@ class CropAdvisorRAG:
         try:
             import re
             
-            # Apply chat template - disable thinking mode
             text = self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
@@ -179,7 +142,6 @@ class CropAdvisorRAG:
             input_ids = inputs['input_ids'].to(self.model.device)
             attention_mask = inputs['attention_mask'].to(self.model.device)
             
-            # Get the token ID for <think> to use as a bad word
             think_token_ids = self.tokenizer.encode('<think>', add_special_tokens=False)
             
             with torch.no_grad():
@@ -198,14 +160,10 @@ class CropAdvisorRAG:
             
             new_tokens = outputs[0][input_ids.shape[1]:]
             response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
-            
-            # Safety net: strip any think block that got through
             response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
-            
             return response
             
         except Exception as e:
-            print(f'Generation error: {e}')
             return ''
     
     def _fallback_response(self) -> str:
@@ -230,18 +188,12 @@ class CropAdvisorRAG:
         soil_ph = context.get("soil_ph", 6.5)
         fertilizer = context.get("fertilizer", 100)
         
-        # Create query for RAG retrieval
         query = f"{crop} production {location} yield improvement fertilizer soil management"
-        
-        # Retrieve relevant documents
         relevant_docs = self._retrieve_relevant_docs(query, top_k=2)
         
-        # If model is not available, use RAG-enhanced fallback
         if not self.model:
             return self._rag_enhanced_fallback(context, relevant_docs)
         
-        # Build prompt for the model
-        # Extract title and content from documents (they are dicts)
         doc_texts = []
         for doc in relevant_docs:
             if isinstance(doc, dict):
@@ -252,7 +204,6 @@ class CropAdvisorRAG:
                 doc_texts.append(str(doc))
         context_text = "\n\n".join(doc_texts) if doc_texts else ""
         
-        # Build messages for chat template
         messages = [
             {
                 'role': 'system',
@@ -275,16 +226,8 @@ class CropAdvisorRAG:
             }
         ]
         
-        # Generate response with message format (reduced tokens to avoid repetition)
         response = self._generate_response(messages, max_new_tokens=250)
-        
-        # Debug: print raw model output
-        print(f"🤖 RAG MODEL RAW OUTPUT:\n{response}\n")
-        
-        # Parse recommendations (basic parsing)
         recommendations = self._parse_recommendations(response)
-        
-        # Determine risk level
         risk_level = self._assess_risk_level(context)
         
         return {
@@ -367,17 +310,13 @@ class CropAdvisorRAG:
             
             for line in lines:
                 line = line.strip()
-                # Strip markdown bold markers
                 line = re.sub(r'\*\*.*?\*\*:?\s*', '', line).strip()
-                # Skip bullets that are just headers or very short
                 line = line.lstrip('0123456789.-• ').strip()
-                # Only keep substantial lines that don't end with colon (headers)
                 if len(line) > 25 and not line.endswith(':'):
                     recommendations.append(line)
                 if len(recommendations) >= 3:
                     break
             
-            # Ensure we have at least some recommendations
             if not recommendations:
                 recommendations = [
                     "Apply balanced NPK fertilizer based on soil test results.",
@@ -385,7 +324,7 @@ class CropAdvisorRAG:
                     "Monitor for pests and diseases regularly.",
                 ]
             
-            return recommendations[:3]  # Return max 3 recommendations
+            return recommendations[:3]
             
         except Exception:
             return [
@@ -401,16 +340,10 @@ class CropAdvisorRAG:
         soil_ph = context.get("soil_ph", 6.5)
         
         risk_factors = 0
-        
-        # Temperature risk
         if temp < 15 or temp > 35:
             risk_factors += 1
-        
-        # Rainfall risk
         if rainfall < 300 or rainfall > 1500:
             risk_factors += 1
-        
-        # Soil pH risk
         if soil_ph < 5.5 or soil_ph > 8.0:
             risk_factors += 1
         

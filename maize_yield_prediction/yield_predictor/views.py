@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -11,16 +10,10 @@ from .serializers import PredictionInputForm
 from .services import prediction_service, weather_service
 from .services.prediction_service import LOCATION_COORDS
 
-logger = logging.getLogger(__name__)
-
-
-# ─── public ────────────────────────────────────────────────────────────────────
 
 def landing_page(request):
     return render(request, 'yield_predictor/landing.html')
 
-
-# ─── dashboard ─────────────────────────────────────────────────────────────────
 
 @login_required
 def dashboard(request):
@@ -28,7 +21,6 @@ def dashboard(request):
         user=request.user
     ).order_by('-created_at')[:50]
 
-    # Weather forecast for the user's most recent prediction location
     forecast = []
     latest_location = predictions[0].location if predictions else 'Nakuru'
     coords = LOCATION_COORDS.get(latest_location, {'lat': -0.3031, 'lon': 36.08})
@@ -39,10 +31,9 @@ def dashboard(request):
             api_key=settings.API_KEY,
             forecast_url=settings.FORECAST_URL,
         )
-    except Exception as e:
-        logger.warning(f'Dashboard forecast failed: {e}')
+    except Exception:
+        pass
 
-    # Chart data for the last 10 predictions
     chart_data = None
     if predictions:
         chart_data = {
@@ -60,29 +51,18 @@ def dashboard(request):
     })
 
 
-# ─── prediction ────────────────────────────────────────────────────────────────
-
 @login_required
 def predict_yield(request):
-    """
-    GET  — render blank prediction form
-    POST — validate → run prediction service → save → render result
-    """
-
     if request.method == 'POST':
         form = PredictionInputForm(request.POST)
 
         if not form.is_valid():
-            # Return the form with validation errors highlighted
             return render(request, 'yield_predictor/predict_yield.html', {
                 'form':      form,
                 'locations': sorted(LOCATION_COORDS.keys()),
             })
 
-        # Form is valid — run the full prediction pipeline
         service_input = form.to_service_dict()
-        logger.info(f"🎯 VIEW: Starting prediction for user {request.user.username}")
-        logger.info(f"🎯 VIEW: Service input: {service_input}")
 
         result = prediction_service.run_prediction(
             crop=service_input['crop'],
@@ -96,19 +76,14 @@ def predict_yield(request):
                 'forecast_url': settings.FORECAST_URL,
             },
         )
-        
-        logger.info(f"🎯 VIEW: Prediction result: {result}")
 
         if not result['success']:
-            logger.error(f"🎯 VIEW: Prediction failed: {result.get('error')}")
             form.add_error(None, result['error'])
             return render(request, 'yield_predictor/predict_yield.html', {
                 'form':      form,
                 'locations': sorted(LOCATION_COORDS.keys()),
             })
 
-        logger.info(f"🎯 VIEW: Saving prediction to database...")
-        # Save prediction to database
         prediction = YieldPrediction.objects.create(
             user=request.user,
             crop=service_input['crop'],
@@ -134,17 +109,14 @@ def predict_yield(request):
             fallback_used=result['fallback_used'],
             model_version=result.get('model_source', ''),
         )
-        logger.info(f"🎯 VIEW: Prediction saved to database with ID {prediction.id}")
 
-        logger.info(f"🎯 VIEW: Rendering results template...")
         return render(request, 'yield_predictor/predict_yield.html', {
-            'form':        PredictionInputForm(),   # fresh form for next prediction
+            'form':        PredictionInputForm(),
             'locations':   sorted(LOCATION_COORDS.keys()),
             'result':      result,
             'prediction':  prediction,
         })
 
-    # GET request — blank form
     return render(request, 'yield_predictor/predict_yield.html', {
         'form':      PredictionInputForm(),
         'locations': sorted(LOCATION_COORDS.keys()),

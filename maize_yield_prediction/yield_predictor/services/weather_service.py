@@ -1,12 +1,5 @@
-# weather_service.py
-# Everything weather-related extracted from views.py
-# Returns structured dicts, no Django imports
-
 import requests
 from typing import Dict, List
-import logging
-
-logger = logging.getLogger(__name__)
 
 class WeatherUnavailableError(Exception):
     """Raised when weather data cannot be fetched"""
@@ -14,15 +7,10 @@ class WeatherUnavailableError(Exception):
 
 def get_current_weather(location: str, lat: float, lon: float, api_key: str, base_url: str) -> Dict:
     """
-    Returns weather dict or raises WeatherUnavailableError.
+    Fetch current weather data for a location.
     
     Returns:
-        dict: {
-            'temperature': float,
-            'humidity': float,
-            'rainfall': float,
-            'used_fallback': bool
-        }
+        dict with temperature, humidity, rainfall, used_fallback flag
     """
     try:
         if lat and lon:
@@ -34,27 +22,23 @@ def get_current_weather(location: str, lat: float, lon: float, api_key: str, bas
         response.raise_for_status()
         data = response.json()
         
-        weather_data = {
+        return {
             'temperature': data['main']['temp'],
             'humidity': data['main']['humidity'],
-            'rainfall': data.get('rain', {}).get('1h', 0) * 24,  # convert to daily
+            'rainfall': data.get('rain', {}).get('1h', 0) * 24,
             'used_fallback': lat is None or lon is None
         }
         
-        logger.info(f"Weather fetched for {location}: {weather_data}")
-        return weather_data
-        
     except Exception as e:
-        logger.error(f"Weather fetch failed for {location}: {e}")
         raise WeatherUnavailableError(f"Could not fetch weather for {location}") from e
 
 
 def get_forecast(lat: float, lon: float, api_key: str, forecast_url: str) -> List[Dict]:
     """
-    Returns 5-day forecast list or empty list if unavailable.
+    Fetch 5-day weather forecast.
     
     Returns:
-        list: [{'datetime': str, 'temperature': float, 'humidity': float, 'rain': float}, ...]
+        list of forecast dicts or empty list if unavailable
     """
     if not api_key or not forecast_url:
         return _get_mock_forecast_data()
@@ -76,23 +60,14 @@ def get_forecast(lat: float, lon: float, api_key: str, forecast_url: str) -> Lis
         return forecast
         
     except Exception as e:
-        logger.warning(f"Forecast API failed: {e}, using mock data")
         return _get_mock_forecast_data()
 
 
 def build_seasonal_features(weather: Dict, forecast: List[Dict] = None) -> Dict:
     """
-    Converts current weather into model input features.
-    
-    Args:
-        weather: Current weather dict from get_current_weather()
-        forecast: Optional forecast list from get_forecast()
-    
-    Returns:
-        dict: Weather features formatted for XGBoost model
+    Convert weather data into XGBoost model input features.
     """
     if forecast:
-        # Calculate seasonal estimates from forecast
         temps = [entry["temperature"] for entry in forecast]
         humidity_vals = [entry["humidity"] for entry in forecast]
         rain_vals = [entry["rain"] for entry in forecast]
@@ -102,16 +77,14 @@ def build_seasonal_features(weather: Dict, forecast: List[Dict] = None) -> Dict:
         temp_max = max(temps) if temps else weather['temperature'] + 3
         humidity_avg = sum(humidity_vals) / len(humidity_vals) if humidity_vals else weather['humidity']
         
-        # Scale forecast rain to seasonal estimate
         forecast_rain = sum(rain_vals) if rain_vals else 0
-        seasonal_rainfall = forecast_rain * 30  # rough seasonal estimate
+        seasonal_rainfall = forecast_rain * 30
     else:
-        # Use current weather with estimates
         temp_avg = weather['temperature']
         temp_min = weather['temperature'] - 5
         temp_max = weather['temperature'] + 3  
         humidity_avg = weather['humidity']
-        seasonal_rainfall = weather['rainfall'] * 90  # scale daily to seasonal
+        seasonal_rainfall = weather['rainfall'] * 90
     
     return {
         "temp_avg_c": round(temp_avg, 1),
@@ -119,9 +92,9 @@ def build_seasonal_features(weather: Dict, forecast: List[Dict] = None) -> Dict:
         "temp_max_c": round(temp_max, 1),
         "rainfall_season_mm": round(seasonal_rainfall, 1),
         "humidity_pct": round(humidity_avg, 1),
-        "rainfall_days": 30,  # estimate
-        "dry_spell_days": 5,  # estimate
-        "solar_mj": 18.0      # default solar radiation
+        "rainfall_days": 30,
+        "dry_spell_days": 5,
+        "solar_mj": 18.0
     }
 
 

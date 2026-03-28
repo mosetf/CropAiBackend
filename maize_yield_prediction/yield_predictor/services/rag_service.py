@@ -1,14 +1,9 @@
-# rag_service.py
-# Thin wrapper around CropAdvisorRAG
-# Keeps views.py clean of any ML imports
-
 from typing import Dict, Any
 import logging
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton
 _advisor = None
 
 
@@ -17,7 +12,6 @@ def get_advisor():
     global _advisor
     if _advisor is None:
         try:
-            # Import here to avoid loading PyTorch models at startup
             from ..utils.crop_advisor_rag import CropAdvisorRAG
             
             _advisor = CropAdvisorRAG(
@@ -28,7 +22,7 @@ def get_advisor():
             
         except Exception as e:
             logger.warning(f"CropAdvisorRAG initialization failed: {e}")
-            _advisor = None  # Keep as None to trigger fallback
+            _advisor = None 
             
     return _advisor
 
@@ -38,31 +32,17 @@ def get_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, Any]:
     Get AI recommendations using RAG-enhanced Qwen model.
     
     Args:
-        prediction_data: Dict with keys:
-            - crop: str
-            - location: str  
-            - yield: float
-            - temp: float
-            - rainfall: float
-            - soil_ph: float
-            - fertilizer: float
+        prediction_data: Dict with crop, location, yield, temp, rainfall, soil_ph, fertilizer
     
     Returns:
-        Dict with keys:
-            - recommendations: List[str]
-            - risk_level: str ("low", "medium", "high")
-            - risk_reason: str
-            - fallback: bool (True if RAG failed)
+        Dict with recommendations, risk_level, risk_reason, fallback status
     """
-    
-    # Try to use RAG model
     advisor = get_advisor()
     
     if advisor is None:
         logger.warning("CropAdvisorRAG not available, using fallback")
         return _get_fallback_recommendations(prediction_data)
     
-    # Use RAG model
     try:
         result = advisor.get_recommendations(prediction_data)
         result["fallback"] = False
@@ -73,11 +53,7 @@ def get_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _get_fallback_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generate basic recommendations when RAG is unavailable.
-    Uses rule-based logic based on crop and conditions.
-    """
-    
+    """Generate basic recommendations when RAG is unavailable."""
     crop = prediction_data.get("crop", "maize")
     yield_pred = prediction_data.get("yield", 0)
     rainfall = prediction_data.get("rainfall", 800)
@@ -89,30 +65,25 @@ def _get_fallback_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, 
     risk_level = "medium"
     risk_reason = "Normal growing conditions expected"
     
-    # Crop-specific recommendations
     if crop == "maize":
         recommendations.append("Plant early in the season for best results")
         if fertilizer < 150:
             recommendations.append("Consider increasing fertilizer application for maize")
         if soil_ph < 6.0:
             recommendations.append("Soil pH is low for maize - consider liming")
-            
     elif crop == "beans":
         recommendations.append("Beans fix nitrogen naturally - avoid over-fertilizing")
         if soil_ph > 7.0:
             recommendations.append("Soil pH is high for beans - monitor carefully")
-            
     elif crop == "coffee":
         recommendations.append("Coffee requires consistent moisture and good drainage")
         if temp > 25:
             recommendations.append("High temperatures may stress coffee plants")
-            
     elif crop == "tea":
         recommendations.append("Tea thrives in well-drained, acidic soils")
         if soil_ph > 6.5:
             recommendations.append("Soil pH may be too high for optimal tea growth")
     
-    # Weather-based recommendations  
     if rainfall < 500:
         recommendations.append("Low rainfall expected - consider irrigation")
         risk_level = "high"
@@ -124,19 +95,17 @@ def _get_fallback_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, 
     
     if temp > 30:
         recommendations.append("High temperatures expected - provide shade if possible")
-        risk_level = "high" if risk_level != "high" else "high"
+        risk_level = "high"
         risk_reason = "Heat stress risk due to high temperatures"
     elif temp < 15:
         recommendations.append("Cool temperatures expected - consider season timing")
     
-    # Yield-based recommendations
     if yield_pred > 0:
         if yield_pred < 1.0:
             recommendations.append("Predicted yield is low - review farming practices")
         elif yield_pred > 5.0:
             recommendations.append("High yield potential - ensure proper harvesting")
     
-    # General recommendations
     recommendations.extend([
         "Monitor weather conditions regularly",
         "Apply fertilizer based on soil test results",
@@ -144,7 +113,7 @@ def _get_fallback_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, 
     ])
     
     return {
-        "recommendations": recommendations[:5],  # Limit to 5 recommendations
+        "recommendations": recommendations[:5],
         "risk_level": risk_level,
         "risk_reason": risk_reason,
         "fallback": True
