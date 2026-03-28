@@ -9,6 +9,7 @@ from .models import YieldPrediction
 from .serializers import PredictionInputForm
 from .services import prediction_service, weather_service
 from .services.prediction_service import LOCATION_COORDS
+from .utils.crop_config import is_crop_available, get_available_crop_choices, get_all_crop_choices
 
 
 def landing_page(request):
@@ -43,11 +44,17 @@ def dashboard(request):
             'rainfall': [float(p.rainfall or 0) for p in predictions[:10]],
         }
 
+    all_crops = get_all_crop_choices()
+    available_crops = get_available_crop_choices()
+    coming_soon = [c[0] for c in all_crops if c not in available_crops]
+
     return render(request, 'yield_predictor/dashboard.html', {
         'predictions':      predictions,
         'locations':        sorted(LOCATION_COORDS.keys()),
         'forecast':         forecast,
         'chart_data_json':  json.dumps(chart_data) if chart_data else None,
+        'available_crops':  available_crops,
+        'coming_soon_crops': coming_soon,
     })
 
 
@@ -55,11 +62,21 @@ def dashboard(request):
 def predict_yield(request):
     if request.method == 'POST':
         form = PredictionInputForm(request.POST)
+        
+        crop = request.POST.get('crop', '')
+        if crop and not is_crop_available(crop):
+            form.add_error('crop', f'Model for {crop} is not yet available. Please select from available crops.')
+            return render(request, 'yield_predictor/predict_yield.html', {
+                'form':      form,
+                'locations': sorted(LOCATION_COORDS.keys()),
+                'available_crops': get_available_crop_choices(),
+            })
 
         if not form.is_valid():
             return render(request, 'yield_predictor/predict_yield.html', {
                 'form':      form,
                 'locations': sorted(LOCATION_COORDS.keys()),
+                'available_crops': get_available_crop_choices(),
             })
 
         service_input = form.to_service_dict()
@@ -75,6 +92,8 @@ def predict_yield(request):
                 'base_url':     settings.BASE_URL,
                 'forecast_url': settings.FORECAST_URL,
             },
+            market_price_override=service_input.get('market_price_override'),
+            labour_cost_override=service_input.get('labour_cost_override'),
         )
 
         if not result['success']:
@@ -82,6 +101,7 @@ def predict_yield(request):
             return render(request, 'yield_predictor/predict_yield.html', {
                 'form':      form,
                 'locations': sorted(LOCATION_COORDS.keys()),
+                'available_crops': get_available_crop_choices(),
             })
 
         prediction = YieldPrediction.objects.create(
@@ -115,9 +135,11 @@ def predict_yield(request):
             'locations':   sorted(LOCATION_COORDS.keys()),
             'result':      result,
             'prediction':  prediction,
+            'available_crops': get_available_crop_choices(),
         })
 
     return render(request, 'yield_predictor/predict_yield.html', {
         'form':      PredictionInputForm(),
         'locations': sorted(LOCATION_COORDS.keys()),
+        'available_crops': get_available_crop_choices(),
     })
