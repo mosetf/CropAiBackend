@@ -81,6 +81,8 @@ def predict_yield(request):
 
         # Form is valid — run the full prediction pipeline
         service_input = form.to_service_dict()
+        logger.info(f"🎯 VIEW: Starting prediction for user {request.user.username}")
+        logger.info(f"🎯 VIEW: Service input: {service_input}")
 
         result = prediction_service.run_prediction(
             crop=service_input['crop'],
@@ -94,14 +96,18 @@ def predict_yield(request):
                 'forecast_url': settings.FORECAST_URL,
             },
         )
+        
+        logger.info(f"🎯 VIEW: Prediction result: {result}")
 
         if not result['success']:
+            logger.error(f"🎯 VIEW: Prediction failed: {result.get('error')}")
             form.add_error(None, result['error'])
             return render(request, 'yield_predictor/predict_yield.html', {
                 'form':      form,
                 'locations': sorted(LOCATION_COORDS.keys()),
             })
 
+        logger.info(f"🎯 VIEW: Saving prediction to database...")
         # Save prediction to database
         prediction = YieldPrediction.objects.create(
             user=request.user,
@@ -128,7 +134,9 @@ def predict_yield(request):
             fallback_used=result['fallback_used'],
             model_version=result.get('model_source', ''),
         )
+        logger.info(f"🎯 VIEW: Prediction saved to database with ID {prediction.id}")
 
+        logger.info(f"🎯 VIEW: Rendering results template...")
         return render(request, 'yield_predictor/predict_yield.html', {
             'form':        PredictionInputForm(),   # fresh form for next prediction
             'locations':   sorted(LOCATION_COORDS.keys()),

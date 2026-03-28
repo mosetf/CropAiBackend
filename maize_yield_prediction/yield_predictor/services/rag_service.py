@@ -55,9 +55,21 @@ def get_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, Any]:
             - fallback: bool (True if RAG failed)
     """
     
-    # Temporarily skip RAG initialization and use fallback
-    logger.info("Using fallback recommendations (RAG temporarily disabled)")
-    return _get_fallback_recommendations(prediction_data)
+    # Try to use RAG model
+    advisor = get_advisor()
+    
+    if advisor is None:
+        logger.warning("CropAdvisorRAG not available, using fallback")
+        return _get_fallback_recommendations(prediction_data)
+    
+    # Use RAG model
+    try:
+        result = advisor.get_recommendations(prediction_data)
+        result["fallback"] = False
+        return result
+    except Exception as e:
+        logger.error(f"RAG recommendation failed: {e}")
+        return _get_fallback_recommendations(prediction_data)
 
 
 def _get_fallback_recommendations(prediction_data: Dict[str, Any]) -> Dict[str, Any]:
