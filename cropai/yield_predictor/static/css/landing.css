@@ -1,0 +1,43 @@
+/* Custom styles to complement Tailwind CSS */
+body {
+    background-color: #f2f5f8;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+button[type="submit"] {
+    background-color: #198754;
+    color: white;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    border: none;
+}
+
+button[type="submit"]:hover {
+    background-color: #157347;
+    transform: scale(1.05);
+}
+
+.progress {
+    height: 20px;
+    border-radius: 30px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    width: 0%;
+    transition: width 1s ease-in-out;
+}
+
+.modal-content {
+    border-radius: 10px;
+}
+
+.modal-header {
+    font-weight: bold;
+}
