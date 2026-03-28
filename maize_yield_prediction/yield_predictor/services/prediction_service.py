@@ -1,20 +1,11 @@
-# prediction_service.py
-# Orchestrates the full prediction pipeline
-# No request/response objects — pure Python
-
 from typing import Dict, Any
 from datetime import date, datetime, timedelta
 import pandas as pd
-import logging
 
 from ..utils.model_loader import get_model, get_season_encoder
 from .weather_service import get_current_weather, get_forecast, build_seasonal_features, WeatherUnavailableError
 from .rag_service import get_recommendations
 
-logger = logging.getLogger(__name__)
-
-# GPS coordinates for all 47 Kenya counties
-# Source: Kenya National Bureau of Statistics (KNBS) county centroids
 LOCATION_COORDS = {
     # ── NAIROBI METROPOLITAN ──────────────────────────────
     "Nairobi":          {"lat": -1.2864, "lon": 36.8172, "elevation_m": 1795, "region": "Nairobi Metropolitan"},
@@ -82,7 +73,6 @@ LOCATION_COORDS = {
     "Mandera":          {"lat":  3.9366, "lon": 41.8670, "elevation_m":  328, "region": "North Eastern"},
 }
 
-# XGBoost model feature names
 FEATURES = [
     "lat", "lon", "elevation_m",
     "temp_avg_c", "temp_max_c", "temp_min_c", "temp_range_c",
@@ -134,25 +124,22 @@ def run_prediction(
     
     try:
         logger.info(f"🌾 Starting prediction pipeline")
-        logger.info(f"📊 INPUT: crop={crop}, location={location}, planting_date={planting_date}")
-        logger.info(f"📊 INPUT: soil_data={soil_data}, fertilizer={fertilizer}")
+        logger.info(f" INPUT: crop={crop}, location={location}, planting_date={planting_date}")
+        logger.info(f" INPUT: soil_data={soil_data}, fertilizer={fertilizer}")
         
-        # 1. Validate inputs
         if location not in LOCATION_COORDS:
-            logger.error(f"❌ Unknown location: {location}")
+            logger.error(f"Unknown location: {location}")
             return {"success": False, "error": f"Unknown location: {location}"}
             
         loc_info = LOCATION_COORDS[location]
-        logger.info(f"📍 Location info: lat={loc_info['lat']}, lon={loc_info['lon']}, elevation={loc_info['elevation_m']}m")
+        logger.info(f" Location info: lat={loc_info['lat']}, lon={loc_info['lon']}, elevation={loc_info['elevation_m']}m")
         
-        # 2. Load XGBoost model for this crop
-        logger.info(f"🤖 Loading XGBoost model for {crop}")
+        logger.info(f" Loading XGBoost model for {crop}")
         model = get_model(crop)
         season_encoder = get_season_encoder()
-        logger.info(f"✅ Model loaded successfully")
+        logger.info(f"Model loaded successfully")
         
-        # 3. Fetch weather and build seasonal features
-        logger.info(f"🌤️  Fetching weather data for {location}")
+        logger.info(f" Fetching weather data for {location}")
         try:
             current_weather = get_current_weather(
                 location, 
@@ -161,7 +148,7 @@ def run_prediction(
                 api_settings.get("api_key"),
                 api_settings.get("base_url")
             )
-            logger.info(f"🌤️  Current weather: {current_weather}")
+            logger.info(f" Current weather: {current_weather}")
             
             forecast_data = get_forecast(
                 loc_info["lat"],
@@ -169,24 +156,22 @@ def run_prediction(
                 api_settings.get("api_key"),
                 api_settings.get("forecast_url")
             )
-            # Handle both dict and list forecast data formats
             if forecast_data:
                 if isinstance(forecast_data, dict):
-                    logger.info(f"🌤️  Forecast data keys: {list(forecast_data.keys())}")
+                    logger.info(f" Forecast data keys: {list(forecast_data.keys())}")
                 elif isinstance(forecast_data, list):
-                    logger.info(f"🌤️  Forecast data: list with {len(forecast_data)} items")
+                    logger.info(f" Forecast data: list with {len(forecast_data)} items")
                 else:
-                    logger.info(f"🌤️  Forecast data type: {type(forecast_data)}")
+                    logger.info(f" Forecast data type: {type(forecast_data)}")
             else:
-                logger.info(f"🌤️  Forecast data: None")
+                logger.info(f" Forecast data: None")
             
             weather_features = build_seasonal_features(current_weather, forecast_data)
             weather_fallback = current_weather.get("used_fallback", False)
-            logger.info(f"🌤️  Weather features: {weather_features}")
+            logger.info(f" Weather features: {weather_features}")
             
         except WeatherUnavailableError:
-            # Use default weather values
-            logger.warning(f"⚠️  Weather unavailable for {location}, using defaults")
+            logger.warning(f"  Weather unavailable for {location}, using defaults")
             weather_features = {
                 "temp_avg_c": 22.0, "temp_min_c": 18.0, "temp_max_c": 26.0,
                 "rainfall_season_mm": 800.0, "humidity_pct": 65.0,
@@ -195,12 +180,11 @@ def run_prediction(
             current_weather = {"temperature": 22.0, "humidity": 65.0, "rainfall": 800.0}
             weather_fallback = True
         
-        # 4. Build feature vector for XGBoost
-        logger.info(f"🔧 Building feature vector")
+        logger.info(f" Building feature vector")
         planting_month = planting_date.month
         season = "long_rains" if planting_month in [3, 4, 5] else "short_rains"
         season_encoded = season_encoder.transform([season])[0]
-        logger.info(f"📅 Planting: month={planting_month}, season={season}, encoded={season_encoded}")
+        logger.info(f"Planting: month={planting_month}, season={season}, encoded={season_encoded}")
         
         features = {
             "lat": loc_info["lat"],
@@ -228,25 +212,23 @@ def run_prediction(
             "season_encoded": season_encoded,
         }
         
-        logger.info(f"🔧 FEATURES: {features}")
+        logger.info(f" FEATURES: {features}")
         
-        # 5. Run XGBoost prediction
-        logger.info(f"🤖 Preparing features for model prediction")
+        logger.info(f" Preparing features for model prediction")
         X = pd.DataFrame([features])[FEATURES]
-        logger.info(f"🤖 Feature vector shape: {X.shape}")
-        logger.info(f"🤖 Feature vector:\n{X.iloc[0].to_dict()}")
+        logger.info(f" Feature vector shape: {X.shape}")
+        logger.info(f" Feature vector:\n{X.iloc[0].to_dict()}")
         
-        logger.info(f"🤖 Running XGBoost prediction...")
+        logger.info(f" Running XGBoost prediction...")
         yield_pred = float(model.predict(X)[0])
-        logger.info(f"🎯 MODEL OUTPUT: {yield_pred:.3f} tonnes/hectare")
+        logger.info(f"MODEL OUTPUT: {yield_pred:.3f} tonnes/hectare")
         
-        # 6. Calculate confidence interval (±15% as proxy)
         yield_low = round(yield_pred * 0.85, 2)
         yield_high = round(yield_pred * 1.15, 2)
-        logger.info(f"📊 Confidence interval: [{yield_low}, {yield_high}] t/ha")
+        logger.info(f" Confidence interval: [{yield_low}, {yield_high}] t/ha")
         
         # 7. Get RAG-based AI recommendations
-        logger.info(f"🧠 Getting AI recommendations...")
+        logger.info(f"Getting AI recommendations...")
         try:
             ai_result = get_recommendations({
                 "crop": crop,
@@ -257,9 +239,9 @@ def run_prediction(
                 "soil_ph": soil_data.get("soil_ph", 6.0),
                 "fertilizer": fertilizer,
             })
-            logger.info(f"🧠 AI recommendations: {ai_result.get('recommendations', [])}")
+            logger.info(f"AI recommendations: {ai_result.get('recommendations', [])}")
         except Exception as e:
-            logger.warning(f"⚠️  RAG recommendations failed: {e}")
+            logger.warning(f"  RAG recommendations failed: {e}")
             ai_result = {
                 "recommendations": ["Plant early for optimal yield", "Monitor weather conditions", "Apply balanced fertilizer"],
                 "risk_level": "medium",
@@ -268,10 +250,10 @@ def run_prediction(
             }
         
         # 8. Calculate business metrics
-        logger.info(f"💰 Calculating business metrics...")
+        logger.info(f" Calculating business metrics...")
         harvest_window = _estimate_harvest_window(planting_date, crop)
         net_profit = _estimate_profit(yield_pred, crop)
-        logger.info(f"💰 Harvest window: {harvest_window}, Net profit: ${net_profit}")
+        logger.info(f" Harvest window: {harvest_window}, Net profit: ${net_profit}")
         
         result = {
             "success": True,
@@ -291,16 +273,16 @@ def run_prediction(
             "fallback_used": weather_fallback or ai_result.get("fallback", False),
         }
         
-        logger.info(f"✅ PREDICTION COMPLETE: {result}")
+        logger.info(f"PREDICTION COMPLETE: {result}")
         return result
         
     except FileNotFoundError as e:
         error_msg = f"Model not found for {crop}: {e}"
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         return {"success": False, "error": error_msg}
     except Exception as e:
         error_msg = f"Prediction failed: {str(e)}"
-        logger.error(f"❌ Prediction failed for {crop} at {location}: {e}", exc_info=True)
+        logger.error(f"Prediction failed for {crop} at {location}: {e}", exc_info=True)
         return {"success": False, "error": error_msg}
 
 

@@ -6,7 +6,6 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Global model registry
 _registry: dict = {}
 _season_encoder = None
 
@@ -152,10 +151,8 @@ def validate_models() -> dict:
     valid_crops = []
     missing_crops = []
     
-    # Check crop models
     for crop in CROP_CHOICES:
         try:
-            # Try to load model (this validates it)
             model = get_model(crop)
             valid_crops.append(crop)
         except (FileNotFoundError, ValueError):
@@ -164,7 +161,6 @@ def validate_models() -> dict:
             logger.warning(f"Model {crop} exists but failed to load: {e}")
             missing_crops.append(crop)
     
-    # Check season encoder
     try:
         get_season_encoder()
         season_encoder_ok = True
