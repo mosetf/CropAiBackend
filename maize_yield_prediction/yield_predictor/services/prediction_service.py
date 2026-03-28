@@ -6,6 +6,14 @@ from ..utils.model_loader import get_model, get_season_encoder
 from .weather_service import get_current_weather, get_forecast, build_seasonal_features, WeatherUnavailableError
 from .rag_service import get_recommendations
 
+class _NoOp:
+    def __getattr__(self, name):
+        def noop(*args, **kwargs):
+            pass
+        return noop
+
+logger = _NoOp()
+
 LOCATION_COORDS = {
     # ── NAIROBI METROPOLITAN ──────────────────────────────
     "Nairobi":          {"lat": -1.2864, "lon": 36.8172, "elevation_m": 1795, "region": "Nairobi Metropolitan"},
@@ -91,7 +99,9 @@ def run_prediction(
     soil_data: Dict[str, float],
     fertilizer: float, 
     planting_date: date,
-    api_settings: Dict[str, str]
+    api_settings: Dict[str, str],
+    market_price_override: float = None,
+    labour_cost_override: float = None,
 ) -> Dict[str, Any]:
     """
     Orchestrates the full prediction pipeline.
@@ -252,7 +262,7 @@ def run_prediction(
         # 8. Calculate business metrics
         logger.info(f" Calculating business metrics...")
         harvest_window = _estimate_harvest_window(planting_date, crop)
-        net_profit = _estimate_profit(yield_pred, crop)
+        net_profit = _estimate_profit(yield_pred, crop, market_price_override, labour_cost_override)
         logger.info(f" Harvest window: {harvest_window}, Net profit: ${net_profit}")
         
         result = {
@@ -301,7 +311,12 @@ def _estimate_harvest_window(planting_date: date, crop: str) -> str:
     return f"{harvest_start.strftime('%B %d, %Y')} to {harvest_end.strftime('%B %d, %Y')}"
 
 
-def _estimate_profit(yield_t_ha: float, crop: str) -> float:
+def _estimate_profit(
+    yield_t_ha: float, 
+    crop: str,
+    market_price_override: float = None,
+    labour_cost_override: float = None,
+) -> float:
     """Estimate profit using current Kenya market prices."""
     # Prices in KES per tonne (approximate 2026 farm-gate)
     market_prices = {
@@ -315,7 +330,10 @@ def _estimate_profit(yield_t_ha: float, crop: str) -> float:
         "potatoes": 35_000, "cassava": 15_000, "rice": 30_000,
     }
     
-    price = market_prices.get(crop, 35_000)
+    price = market_price_override if market_price_override else market_prices.get(crop, 35_000)
     cost = cost_per_ha.get(crop, 25_000)
+    
+    if labour_cost_override:
+        cost += labour_cost_override
     
     return round((yield_t_ha * price) - cost, 2)
