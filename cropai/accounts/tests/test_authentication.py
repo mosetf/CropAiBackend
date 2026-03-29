@@ -14,10 +14,10 @@ class TestLoginView:
 
     def test_login_success(self, api_client):
         """Test successful login returns access token and user."""
-        User.objects.create_user(username='testuser', password='testpass123')
+        User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass123',
             'remember_me': False
         }, format='json')
@@ -25,14 +25,14 @@ class TestLoginView:
         assert response.status_code == status.HTTP_200_OK
         assert 'access' in response.data
         assert 'user' in response.data
-        assert response.data['user']['username'] == 'testuser'
+        assert response.data['user']['email'] == 'test@example.com'
 
     def test_login_invalid_credentials(self, api_client):
         """Test login with invalid credentials fails."""
-        User.objects.create_user(username='testuser', password='testpass123')
+        User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'wrongpassword'
         }, format='json')
         
@@ -42,7 +42,7 @@ class TestLoginView:
     def test_login_nonexistent_user(self, api_client):
         """Test login with non-existent user fails."""
         response = api_client.post('/api/v1/auth/login/', {
-            'username': 'nonexistent',
+            'email': 'nonexistent@example.com',
             'password': 'anypassword'
         }, format='json')
         
@@ -50,10 +50,10 @@ class TestLoginView:
 
     def test_login_sets_refresh_cookie(self, api_client):
         """Test login sets refresh token in httpOnly cookie."""
-        User.objects.create_user(username='testuser', password='testpass123')
+        User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass123'
         }, format='json')
         
@@ -64,10 +64,10 @@ class TestLoginView:
         """Test login with remember_me creates UserSession."""
         from accounts.models import UserSession
         
-        user = User.objects.create_user(username='testuser', password='testpass123')
+        user = User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass123',
             'remember_me': True
         }, format='json')
@@ -78,7 +78,7 @@ class TestLoginView:
     def test_login_missing_credentials(self, api_client):
         """Test login with missing credentials fails."""
         response = api_client.post('/api/v1/auth/login/', {
-            'username': 'testuser'
+            'email': 'test@example.com'
         }, format='json')
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -168,8 +168,8 @@ class TestCurrentUserView:
         response = authenticated_client.get('/api/v1/auth/user/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['username'] == test_user.username
         assert response.data['email'] == test_user.email
+        assert 'username' not in response.data
 
     def test_get_current_user_unauthenticated_fails(self, api_client):
         """Test getting user without authentication fails."""

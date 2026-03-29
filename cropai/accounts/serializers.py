@@ -5,19 +5,20 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.core.validators import EmailValidator
 from django.contrib.auth import get_user_model
+import uuid
 from .models import UserSession
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+        fields = ('id', 'email', 'first_name', 'last_name')
         read_only_fields = ('id',)
 
 
 class LoginSerializer(serializers.Serializer):
-    """Serializer for login endpoint"""
-    username = serializers.CharField(write_only=True)
+    """Serializer for login endpoint - email based"""
+    email = serializers.EmailField(write_only=True)
     password = serializers.CharField(write_only=True, style={'input_type': 'password'})
     remember_me = serializers.BooleanField(required=False, default=False)
     
@@ -55,16 +56,11 @@ class UserSessionSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    """Serializer for user registration endpoint"""
-    username = serializers.CharField(
-        max_length=150,
-        required=True,
-        help_text="Username for login (letters, digits, @/./+/-/_ only)"
-    )
+    """Serializer for user registration endpoint - email based"""
     email = serializers.EmailField(
         required=True,
         validators=[EmailValidator()],
-        help_text="Valid email address"
+        help_text="Valid email address (used for login)"
     )
     password = serializers.CharField(
         write_only=True,
@@ -94,12 +90,6 @@ class RegisterSerializer(serializers.Serializer):
     
     user = UserSerializer(read_only=True)
     access = serializers.CharField(read_only=True)
-    
-    def validate_username(self, value):
-        """Check if username is unique and valid"""
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Username already exists")
-        return value
     
     def validate_email(self, value):
         """Check if email is unique"""

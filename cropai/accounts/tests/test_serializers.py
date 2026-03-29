@@ -17,9 +17,9 @@ class TestUserSerializer:
         serializer = UserSerializer(test_user)
         
         assert serializer.data['id'] == test_user.id
-        assert serializer.data['username'] == test_user.username
         assert serializer.data['email'] == test_user.email
         assert serializer.data['first_name'] == test_user.first_name
+        assert 'username' not in serializer.data
 
     def test_serialize_user_excludes_password(self, test_user):
         """Test password is not serialized."""
@@ -53,17 +53,18 @@ class TestLoginSerializer:
     """Tests for LoginSerializer"""
 
     def test_validate_credentials_success(self):
-        """Test validating correct credentials."""
+        """Test validating correct email."""
         from accounts.serializers import LoginSerializer
         from django.contrib.auth.models import User
         
         user = User.objects.create_user(
-            username='testuser',
+            username='testuser_auto',
+            email='test@example.com',
             password='testpass123'
         )
         
         data = {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass123',
             'remember_me': False
         }
@@ -77,12 +78,13 @@ class TestLoginSerializer:
         from django.contrib.auth.models import User
         
         user = User.objects.create_user(
-            username='testuser',
+            username='testuser_auto',
+            email='test@example.com',
             password='testpass123'
         )
         
         data = {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass123',
             'remember_me': True
         }
