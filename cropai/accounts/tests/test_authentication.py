@@ -62,7 +62,7 @@ class TestLoginView:
 
     def test_login_remember_me_creates_session(self, api_client):
         """Test login with remember_me creates UserSession."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         user = User.objects.create_user(username='testuser', password='testpass123')
         
@@ -103,7 +103,7 @@ class TestLogoutView:
 
     def test_logout_deletes_session(self, authenticated_client, test_user):
         """Test logout deletes UserSession."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         # Create a session first by logging in
         refresh = RefreshToken.for_user(test_user)
@@ -129,7 +129,7 @@ class TestRefreshTokenView:
     def test_refresh_token_success(self, api_client, test_user):
         """Test successful token refresh."""
         refresh = RefreshToken.for_user(test_user)
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         UserSession.objects.create(
             user=test_user,

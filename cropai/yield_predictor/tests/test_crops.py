@@ -19,7 +19,7 @@ class TestCropListView:
 
     def test_list_crops_structure(self, api_client):
         """Test crop list contains required fields."""
-        from cropai.yield_predictor.models import CropModel
+        from yield_predictor.models import CropModel
         
         CropModel.objects.create(
             crop='maize',
@@ -42,7 +42,7 @@ class TestCropListView:
 
     def test_list_crops_only_active(self, api_client):
         """Test only active crops are returned."""
-        from cropai.yield_predictor.models import CropModel
+        from yield_predictor.models import CropModel
         
         # Create active crop
         active = CropModel.objects.create(
@@ -83,7 +83,7 @@ class TestCropDetail:
 
     def test_get_crop_success(self, api_client):
         """Test retrieving a specific crop."""
-        from cropai.yield_predictor.models import CropModel
+        from yield_predictor.models import CropModel
         
         crop = CropModel.objects.create(
             crop='maize',
@@ -108,7 +108,7 @@ class TestCropDetail:
 
     def test_get_inactive_crop_not_found(self, api_client):
         """Test inactive crops cannot be retrieved."""
-        from cropai.yield_predictor.models import CropModel
+        from yield_predictor.models import CropModel
         
         crop = CropModel.objects.create(
             crop='wheat',
@@ -123,7 +123,7 @@ class TestCropDetail:
 
     def test_crop_detail_no_auth_required(self, api_client):
         """Test accessing crop detail doesn't require authentication."""
-        from cropai.yield_predictor.models import CropModel
+        from yield_predictor.models import CropModel
         
         crop = CropModel.objects.create(
             crop='beans',

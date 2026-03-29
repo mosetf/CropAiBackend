@@ -27,7 +27,7 @@ class TestPredictionListCreate:
 
     def test_list_predictions_only_own(self, api_client, test_user, another_user):
         """Test user only sees their own predictions."""
-        from cropai.yield_predictor.models import YieldPrediction
+        from yield_predictor.models import YieldPrediction
         
         # Create predictions for both users
         YieldPrediction.objects.create(
@@ -124,7 +124,7 @@ class TestPredictionDetail:
 
     def test_get_prediction_success(self, authenticated_client, test_user):
         """Test retrieving a prediction."""
-        from cropai.yield_predictor.models import YieldPrediction
+        from yield_predictor.models import YieldPrediction
         
         prediction = YieldPrediction.objects.create(
             user=test_user,
@@ -153,7 +153,7 @@ class TestPredictionDetail:
 
     def test_get_other_user_prediction_fails(self, api_client, test_user, another_user):
         """Test user cannot see another user's prediction."""
-        from cropai.yield_predictor.models import YieldPrediction
+        from yield_predictor.models import YieldPrediction
         
         prediction = YieldPrediction.objects.create(
             user=another_user,
@@ -177,7 +177,7 @@ class TestPredictionDetail:
 
     def test_delete_prediction_success(self, authenticated_client, test_user):
         """Test deleting a prediction."""
-        from cropai.yield_predictor.models import YieldPrediction
+        from yield_predictor.models import YieldPrediction
         
         prediction = YieldPrediction.objects.create(
             user=test_user,
@@ -199,7 +199,7 @@ class TestPredictionDetail:
 
     def test_delete_other_user_prediction_fails(self, api_client, test_user, another_user):
         """Test user cannot delete another user's prediction."""
-        from cropai.yield_predictor.models import YieldPrediction
+        from yield_predictor.models import YieldPrediction
         
         prediction = YieldPrediction.objects.create(
             user=another_user,
@@ -223,7 +223,7 @@ class TestPredictionDetail:
 
     def test_delete_prediction_unauthenticated_fails(self, api_client, test_user):
         """Test deleting prediction without authentication fails."""
-        from cropai.yield_predictor.models import YieldPrediction
+        from yield_predictor.models import YieldPrediction
         
         prediction = YieldPrediction.objects.create(
             user=test_user,
