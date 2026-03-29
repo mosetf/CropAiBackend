@@ -10,6 +10,8 @@ from django.conf import settings
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 from .models import YieldPrediction, CropModel
 from .serializers import PredictionInputForm, YieldPredictionSerializer, CropModelSerializer
@@ -153,14 +155,41 @@ def predict_yield(request):
 
 
 # DRF VIEWSETS (REST API endpoints)
+@extend_schema(
+    tags=['Yield Prediction'],
+    description='Manage yield predictions for authenticated users'
+)
 class YieldPredictionViewSet(viewsets.ModelViewSet):
     """
     API endpoint for yield predictions.
     
     list:    GET /api/v1/predictions/
+             Returns paginated list of user's predictions
+    
     create:  POST /api/v1/predictions/
+             Create new prediction with crop, location, soil data
+    
     retrieve: GET /api/v1/predictions/{id}/
+              Get specific prediction by ID
+    
     destroy: DELETE /api/v1/predictions/{id}/
+             Delete a prediction
+    
+    Expects:
+    - crop: str (maize, wheat, beans, etc)
+    - location: str (Nakuru, Mombasa, etc)
+    - soil_ph: float (0-14)
+    - soil_moisture: float (0-100%)
+    - organic_carbon: float (g/kg)
+    - fertilizer_kg_ha: float
+    - planting_date: date (YYYY-MM-DD)
+    
+    Returns:
+    - predicted_yield: float (tonnes/ha)
+    - yield_low/high: float (confidence interval)
+    - net_profit: float (KES)
+    - risk_level: str (low, medium, high)
+    - ai_recommendations: str
     """
     serializer_class = YieldPredictionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -172,12 +201,26 @@ class YieldPredictionViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+@extend_schema(
+    tags=['Crop Models'],
+    description='Available crop models for prediction'
+)
 class CropModelViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint for crop models (read-only).
     
     list:    GET /api/v1/crops/
+             Returns available crop models with specs
+    
     retrieve: GET /api/v1/crops/{id}/
+              Get specific crop model details
+    
+    Returns crop model info:
+    - name: str (display name)
+    - code: str (maize, wheat, etc)
+    - description: str
+    - version: str (model version)
+    - is_active: bool
     """
     queryset = CropModel.objects.filter(is_active=True)
     serializer_class = CropModelSerializer
