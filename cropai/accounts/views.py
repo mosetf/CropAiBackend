@@ -45,11 +45,11 @@ def get_client_ip(request):
 @extend_schema(
     tags=['Authentication'],
     summary='User Registration',
-    description='Register a new user account and return JWT tokens. Access token in response body, refresh token in httpOnly cookie.',
+    description='Register a new user account with email and password. Access token in response body, refresh token in httpOnly cookie.',
     request=RegisterSerializer,
     responses={
         201: RegisterSerializer,
-        400: OpenApiResponse(description='Validation errors (duplicate username/email, password mismatch, etc)')
+        400: OpenApiResponse(description='Validation errors (duplicate email, password mismatch, etc)')
     }
 )
 @api_view(['POST'])
@@ -59,6 +59,7 @@ def register_view(request):
     POST /api/v1/auth/register/
     
     Register a new user with email and password.
+    Username is auto-generated from email.
     Returns:
       - access token (in response body, in-memory only)
       - refresh token (in httpOnly cookie)
@@ -67,10 +68,25 @@ def register_view(request):
     serializer = RegisterSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
+    email = serializer.validated_data['email']
+    
+    # Generate unique username from email (use email prefix + UUID suffix if needed)
+    email_prefix = email.split('@')[0]
+    base_username = email_prefix[:30]  # Max 30 chars to leave room for suffix
+    username = base_username
+    
+    # Check if username exists, add random suffix if needed
+    counter = 1
+    while User.objects.filter(username=username).exists():
+        import uuid
+        suffix = str(uuid.uuid4())[:8]
+        username = f"{base_username[:22]}_{suffix}"
+        counter += 1
+    
     # Create new user
     user = User.objects.create_user(
-        username=serializer.validated_data['username'],
-        email=serializer.validated_data['email'],
+        username=username,
+        email=email,
         password=serializer.validated_data['password'],
         first_name=serializer.validated_data.get('first_name', ''),
         last_name=serializer.validated_data.get('last_name', ''),
@@ -114,7 +130,7 @@ def register_view(request):
 @extend_schema(
     tags=['Authentication'],
     summary='User Login',
-    description='Authenticate user with credentials and return JWT tokens. Access token in response body, refresh token in httpOnly cookie.',
+    description='Authenticate user with email and password. Returns JWT tokens.',
     request=LoginSerializer,
     responses={200: UserSerializer}
 )
@@ -124,7 +140,7 @@ def login_view(request):
     """
     POST /api/v1/auth/login/
     
-    Login endpoint with JWT and device tracking.
+    Login with email and password.
     Returns:
       - access token (in response body, in-memory only)
       - refresh token (in httpOnly cookie)
@@ -133,12 +149,19 @@ def login_view(request):
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
-    username = serializer.validated_data.get('username')
+    email = serializer.validated_data.get('email')
     password = serializer.validated_data.get('password')
     remember_me = serializer.validated_data.get('remember_me', False)
     
-    user = authenticate(username=username, password=password)
-    if not user:
+    # Get user by email, then authenticate
+    try:
+        user = User.objects.get(email=email)
+        if not user.check_password(password):
+            return Response(
+                {'detail': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+    except User.DoesNotExist:
         return Response(
             {'detail': 'Invalid credentials'},
             status=status.HTTP_401_UNAUTHORIZED
