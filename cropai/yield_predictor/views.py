@@ -1,16 +1,23 @@
+"""
+yield_predictor/views.py - All views: function-based and DRF viewsets
+"""
 import json
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.conf import settings
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+from rest_framework.decorators import action
 
-from .models import YieldPrediction
-from .serializers import PredictionInputForm
+from .models import YieldPrediction, CropModel
+from .serializers import PredictionInputForm, YieldPredictionSerializer, CropModelSerializer
 from .services import prediction_service, weather_service
 from .services.prediction_service import LOCATION_COORDS
 from .utils.crop_config import is_crop_available, get_available_crop_choices, get_all_crop_choices
 
+# FUNCTION-BASED VIEWS (Traditional Django views for HTML)
 
 def landing_page(request):
     return render(request, 'yield_predictor/landing.html')
@@ -143,3 +150,35 @@ def predict_yield(request):
         'locations': sorted(LOCATION_COORDS.keys()),
         'available_crops': get_available_crop_choices(),
     })
+
+
+# DRF VIEWSETS (REST API endpoints)
+class YieldPredictionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for yield predictions.
+    
+    list:    GET /api/v1/predictions/
+    create:  POST /api/v1/predictions/
+    retrieve: GET /api/v1/predictions/{id}/
+    destroy: DELETE /api/v1/predictions/{id}/
+    """
+    serializer_class = YieldPredictionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return YieldPrediction.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class CropModelViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint for crop models (read-only).
+    
+    list:    GET /api/v1/crops/
+    retrieve: GET /api/v1/crops/{id}/
+    """
+    queryset = CropModel.objects.filter(is_active=True)
+    serializer_class = CropModelSerializer
+    permission_classes = [permissions.AllowAny]
