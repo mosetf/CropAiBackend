@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -83,16 +84,23 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'yield_predictor',
+    'accounts',
     'django.contrib.sites',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'crispy_forms',
-    'crispy_bootstrap5'
-
+    'crispy_bootstrap5',
+    'corsheaders',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'dj_rest_auth',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -165,3 +173,54 @@ USE_TZ = True
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+CORS_ALLOW_CREDENTIALS = True
+
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/hour',
+    },
+}
+
+
+# JWT + Session Configuration
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME':        timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME':       timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME_LONG':  timedelta(days=30),
+    
+    'ROTATE_REFRESH_TOKENS':        True,
+    'BLACKLIST_AFTER_ROTATION':     True,
+    'UPDATE_LAST_LOGIN':            True,
+    
+    'AUTH_COOKIE':           'cropai_refresh',
+    'AUTH_COOKIE_SECURE':    False,
+    'AUTH_COOKIE_HTTP_ONLY': True,
+    'AUTH_COOKIE_SAMESITE':  'Lax',
+    'AUTH_COOKIE_PATH':      '/api/auth/',
+}
+
+# Inactivity timeout
+INACTIVITY_TIMEOUT_MINUTES = 30
