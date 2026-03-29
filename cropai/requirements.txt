@@ -5,6 +5,8 @@ django-cors-headers==4.3.1
 dj-rest-auth==5.0.2
 user-agents==2.2.0
 django-allauth==0.63.3
+drf-spectacular==0.27.0
+drf-spectacular-sidecar==2024.3.1
 torch==2.11.0
 transformers==4.30.0
 sentence-transformers==2.2.2
@@ -14,3 +16,4 @@ numpy<2
 psutil==7.2.2
 python-dotenv==1.1.1
 requests==2.31.0
+python-decouple==3.8
