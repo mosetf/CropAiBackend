@@ -173,7 +173,7 @@ class YieldPredictionSerializer(serializers.ModelSerializer):
             'id', 'user_username', 'crop', 'location', 'region', 
             'planting_date', 'season', 'predicted_yield', 'yield_low', 
             'yield_high', 'harvest_window', 'net_profit', 'rainfall', 
-            'temperature', 'humidity', 'rag_recommendations', 
-            'created_at', 'updated_at'
+            'temperature', 'humidity', 'ai_recommendations', 
+            'created_at'
         )
-        read_only_fields = ('id', 'user_username', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'user_username', 'created_at')

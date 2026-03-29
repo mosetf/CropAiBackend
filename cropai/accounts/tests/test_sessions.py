@@ -14,7 +14,7 @@ class TestSessionListView:
 
     def test_list_sessions_success(self, authenticated_client, test_user):
         """Test listing user's active sessions."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         refresh = RefreshToken.for_user(test_user)
         UserSession.objects.create(
@@ -35,7 +35,7 @@ class TestSessionListView:
 
     def test_list_sessions_contains_device_info(self, authenticated_client, test_user):
         """Test session list includes device information."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         refresh = RefreshToken.for_user(test_user)
         UserSession.objects.create(
@@ -63,7 +63,7 @@ class TestSessionListView:
 
     def test_list_sessions_only_shows_own(self, api_client, test_user, another_user):
         """Test user only sees their own sessions."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         # Create sessions for both users
         refresh_test = RefreshToken.for_user(test_user)
@@ -98,7 +98,7 @@ class TestSessionRevokeView:
 
     def test_revoke_specific_session(self, authenticated_client, test_user):
         """Test revoking a specific session by ID."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         refresh = RefreshToken.for_user(test_user)
         session = UserSession.objects.create(
@@ -121,7 +121,7 @@ class TestSessionRevokeView:
 
     def test_revoke_all_other_sessions(self, authenticated_client, test_user):
         """Test revoking all other sessions."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         refresh1 = RefreshToken.for_user(test_user)
         refresh2 = RefreshToken.for_user(test_user)
@@ -153,7 +153,7 @@ class TestSessionRevokeView:
 
     def test_revoke_other_user_session_fails(self, api_client, test_user, another_user):
         """Test user cannot revoke another user's session."""
-        from cropai.accounts.models import UserSession
+        from accounts.models import UserSession
         
         refresh_test = RefreshToken.for_user(test_user)
         refresh_other = RefreshToken.for_user(another_user)
@@ -168,8 +168,10 @@ class TestSessionRevokeView:
         api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh_test.access_token}')
         response = api_client.delete(f'/api/v1/auth/sessions/?id={other_session.id}')
         
-        # Should fail or be ignored
-        assert other_session.id not in [s['id'] for s in response.data or []]
+        # Should return 404 since user cannot see/revoke other user's sessions
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        # Other user's session should still exist
+        assert UserSession.objects.filter(id=other_session.id).exists()
 
     def test_revoke_unauthenticated_fails(self, api_client):
         """Test revoking sessions without authentication fails."""
