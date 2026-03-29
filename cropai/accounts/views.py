@@ -8,11 +8,14 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 from user_agents import parse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 from .models import UserSession
-from .serializers import UserSerializer, UserSessionSerializer, LoginSerializer
+from .serializers import UserSerializer, UserSessionSerializer, LoginSerializer, RegisterSerializer
 
 
 def get_device_info(request):
@@ -39,6 +42,82 @@ def get_client_ip(request):
     return ip
 
 
+@extend_schema(
+    tags=['Authentication'],
+    summary='User Registration',
+    description='Register a new user account and return JWT tokens. Access token in response body, refresh token in httpOnly cookie.',
+    request=RegisterSerializer,
+    responses={
+        201: RegisterSerializer,
+        400: OpenApiResponse(description='Validation errors (duplicate username/email, password mismatch, etc)')
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    """
+    POST /api/v1/auth/register/
+    
+    Register a new user with email and password.
+    Returns:
+      - access token (in response body, in-memory only)
+      - refresh token (in httpOnly cookie)
+      - new user info
+    """
+    serializer = RegisterSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    # Create new user
+    user = User.objects.create_user(
+        username=serializer.validated_data['username'],
+        email=serializer.validated_data['email'],
+        password=serializer.validated_data['password'],
+        first_name=serializer.validated_data.get('first_name', ''),
+        last_name=serializer.validated_data.get('last_name', ''),
+    )
+    
+    # Generate tokens
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
+    
+    lifetime = timedelta(days=1)
+    expires_at = timezone.now() + lifetime
+    
+    device_info = get_device_info(request)
+    jti = str(refresh['jti'])
+    
+    UserSession.objects.create(
+        user=user,
+        jti=jti,
+        expires_at=expires_at,
+        **device_info,
+    )
+    
+    response = Response({
+        'access': access_token,
+        'user': UserSerializer(user).data,
+    }, status=status.HTTP_201_CREATED)
+    
+    response.set_cookie(
+        key='cropai_refresh',
+        value=refresh_token,
+        max_age=int(lifetime.total_seconds()),
+        httponly=True,
+        secure=False,
+        samesite='Lax',
+    )
+    
+    return response
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='User Login',
+    description='Authenticate user with credentials and return JWT tokens. Access token in response body, refresh token in httpOnly cookie.',
+    request=LoginSerializer,
+    responses={200: UserSerializer}
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
@@ -108,6 +187,12 @@ def login_view(request):
     return response
 
 
+@extend_schema(
+    tags=['Authentication'],
+    summary='User Logout',
+    description='Logout current user. Blacklists refresh token and deletes session record.',
+    responses=OpenApiTypes.OBJECT
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
@@ -134,6 +219,12 @@ def logout_view(request):
     return response
 
 
+@extend_schema(
+    tags=['Authentication'],
+    summary='Refresh Access Token',
+    description='Refresh expired access token using refresh token from cookie. Rotates tokens for security.',
+    responses=OpenApiTypes.OBJECT
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def refresh_view(request):
@@ -206,6 +297,15 @@ def refresh_view(request):
         )
 
 
+@extend_schema(
+    tags=['Authentication'],
+    summary='Get Current User',
+    description='Retrieve current authenticated user information.',
+    responses={
+        200: UserSerializer,
+        401: OpenApiResponse(description='Not authenticated')
+    }
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def current_user_view(request):
@@ -217,6 +317,12 @@ def current_user_view(request):
     return Response(UserSerializer(request.user).data)
 
 
+@extend_schema(
+    tags=['Authentication'],
+    summary='Manage User Sessions',
+    description='GET: List all active sessions for current user. DELETE: Revoke sessions (all others or specific by id).',
+    responses=OpenApiTypes.OBJECT
+)
 @api_view(['GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def sessions_view(request):
