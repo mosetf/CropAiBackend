@@ -2,9 +2,11 @@
 accounts/test_authentication.py - Tests for authentication endpoints
 """
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+
+User = get_user_model()
 
 
 @pytest.mark.django_db
@@ -14,7 +16,7 @@ class TestLoginView:
 
     def test_login_success(self, api_client):
         """Test successful login returns access token and user."""
-        User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
+        User.objects.create_user(email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
             'email': 'test@example.com',
@@ -29,7 +31,7 @@ class TestLoginView:
 
     def test_login_invalid_credentials(self, api_client):
         """Test login with invalid credentials fails."""
-        User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
+        User.objects.create_user(email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
             'email': 'test@example.com',
@@ -50,7 +52,7 @@ class TestLoginView:
 
     def test_login_sets_refresh_cookie(self, api_client):
         """Test login sets refresh token in httpOnly cookie."""
-        User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
+        User.objects.create_user(email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
             'email': 'test@example.com',
@@ -64,7 +66,7 @@ class TestLoginView:
         """Test login with remember_me creates UserSession."""
         from accounts.models import UserSession
         
-        user = User.objects.create_user(username='testuser_auto', email='test@example.com', password='testpass123')
+        user = User.objects.create_user(email='test@example.com', password='testpass123')
         
         response = api_client.post('/api/v1/auth/login/', {
             'email': 'test@example.com',
