@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 
 CROP_CHOICES = [
     ('maize',    'Maize'),
@@ -36,7 +36,7 @@ class CropModel(models.Model):
 
 class YieldPrediction(models.Model):
     """One prediction record per form submission."""
-    user             = models.ForeignKey(User, on_delete=models.CASCADE,
+    user             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                          related_name='predictions')
     # What was predicted
     crop             = models.CharField(max_length=50, choices=CROP_CHOICES, default='maize')

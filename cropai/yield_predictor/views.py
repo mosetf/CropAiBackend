@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.conf import settings
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
@@ -225,3 +225,139 @@ class CropModelViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CropModel.objects.filter(is_active=True)
     serializer_class = CropModelSerializer
     permission_classes = [permissions.AllowAny]
+
+
+# META/REFERENCE DATA ENDPOINTS
+
+@extend_schema(
+    tags=['Meta'],
+    summary='Get Available Locations',
+    description='Returns list of all available locations for yield predictions. Use this to populate location dropdown in frontend.',
+    responses={
+        200: OpenApiResponse(
+            description='List of locations with metadata',
+            response={
+                'type': 'object',
+                'properties': {
+                    'locations': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'name': {'type': 'string', 'example': 'Nairobi'},
+                                'lat': {'type': 'number', 'example': -1.2864},
+                                'lon': {'type': 'number', 'example': 36.8172},
+                                'elevation_m': {'type': 'integer', 'example': 1795},
+                                'region': {'type': 'string', 'example': 'Nairobi Metropolitan'}
+                            }
+                        }
+                    },
+                    'count': {'type': 'integer', 'example': 47}
+                }
+            }
+        )
+    }
+)
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_locations(request):
+    """
+    GET /api/v1/meta/locations/
+    
+    Returns all available locations for predictions with their coordinates and region info.
+    Frontend should use this to populate location dropdowns.
+    
+    Response format:
+    {
+        "locations": [
+            {
+                "name": "Nairobi",
+                "lat": -1.2864,
+                "lon": 36.8172,
+                "elevation_m": 1795,
+                "region": "Nairobi Metropolitan"
+            },
+            ...
+        ],
+        "count": 47
+    }
+    """
+    locations_list = [
+        {
+            'name': name,
+            'lat': data['lat'],
+            'lon': data['lon'],
+            'elevation_m': data['elevation_m'],
+            'region': data['region']
+        }
+        for name, data in sorted(LOCATION_COORDS.items())
+    ]
+    
+    return Response({
+        'locations': locations_list,
+        'count': len(locations_list)
+    })
+
+
+@extend_schema(
+    tags=['Meta'],
+    summary='Get Available Crops',
+    description='Returns list of all supported crops for yield predictions. Use this to populate crop dropdown in frontend.',
+    responses={
+        200: OpenApiResponse(
+            description='List of crops',
+            response={
+                'type': 'object',
+                'properties': {
+                    'crops': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string', 'example': 'maize'},
+                                'label': {'type': 'string', 'example': 'Maize'}
+                            }
+                        }
+                    },
+                    'count': {'type': 'integer', 'example': 9}
+                }
+            }
+        )
+    }
+)
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_crops(request):
+    """
+    GET /api/v1/meta/crops/
+    
+    Returns all supported crops for predictions.
+    Frontend should use this to populate crop dropdowns.
+    
+    Response format:
+    {
+        "crops": [
+            {"value": "maize", "label": "Maize"},
+            {"value": "beans", "label": "Beans"},
+            ...
+        ],
+        "count": 9
+    }
+    """
+    from .models import CROP_CHOICES
+    
+    crops_list = [
+        {'value': value, 'label': label}
+        for value, label in CROP_CHOICES
+    ]
+    
+    return Response({
+        'crops': crops_list,
+        'count': len(crops_list)
+    })
+    
+    return Response({
+        'locations': locations_list,
+        'count': len(locations_list)
+    })
+
