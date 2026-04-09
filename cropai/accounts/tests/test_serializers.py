@@ -2,7 +2,9 @@
 accounts/test_serializers.py - Tests for account serializers
 """
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 @pytest.mark.django_db
@@ -55,10 +57,10 @@ class TestLoginSerializer:
     def test_validate_credentials_success(self):
         """Test validating correct email."""
         from accounts.serializers import LoginSerializer
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
         
+        User = get_user_model()
         user = User.objects.create_user(
-            username='testuser_auto',
             email='test@example.com',
             password='testpass123'
         )
@@ -75,10 +77,10 @@ class TestLoginSerializer:
     def test_remember_me_flag_included(self):
         """Test remember_me flag is processed."""
         from accounts.serializers import LoginSerializer
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
         
+        User = get_user_model()
         user = User.objects.create_user(
-            username='testuser_auto',
             email='test@example.com',
             password='testpass123'
         )
