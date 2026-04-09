@@ -85,6 +85,8 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
 SITE_ID = 1
 
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
@@ -209,10 +211,12 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
     'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '100/hour',
+        'anon': '100/minute',     # Anonymous users (login, register) - 100 requests per minute
+        'user': '1000/hour',      # Authenticated users - 1000 requests per hour
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
@@ -277,6 +281,10 @@ LOGGING = {
             'format': '[{asctime}] {message}',
             'style': '{',
         },
+        'django_server': {
+            'format': '[{asctime}] {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
@@ -311,7 +319,12 @@ LOGGING = {
             'propagate': True,
         },
         'django.request': {
-            'handlers': ['rotating_file'],
+            'handlers': ['console', 'rotating_file'],  # ✅ Added console
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.server': {  # ✅ Added for development server logs
+            'handlers': ['console', 'rotating_file'],
             'level': 'INFO',
             'propagate': False,
         },
