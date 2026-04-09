@@ -1,7 +1,9 @@
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
+
+User = get_user_model()
 
 
 @pytest.fixture
@@ -14,7 +16,6 @@ def api_client():
 def test_user(db):
     """Create a test user."""
     user = User.objects.create_user(
-        username='testuser',
         email='test@example.com',
         password='testpass123'
     )
@@ -33,7 +34,6 @@ def authenticated_client(api_client, test_user):
 def user_with_token(db):
     """Create user and return with refresh token."""
     user = User.objects.create_user(
-        username='testuser2',
         email='test2@example.com',
         password='testpass123'
     )
@@ -49,7 +49,6 @@ def user_with_token(db):
 def another_user(db):
     """Create a different test user."""
     return User.objects.create_user(
-        username='otheruser',
         email='other@example.com',
         password='otherpass123'
     )
