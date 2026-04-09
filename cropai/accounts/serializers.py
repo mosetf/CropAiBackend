@@ -1,15 +1,49 @@
 """
-accounts/serializers.py - DRF serializers for authentication and session management
+accounts/serializers.py - DRF serializers for authentication and profile management
 """
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from django.core.validators import EmailValidator
 from django.contrib.auth import get_user_model
+from django.core.validators import EmailValidator
 import uuid
-from .models import UserSession
+from .models import UserSession, UserProfile
+
+User = get_user_model()
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for UserProfile with all personal and farm details"""
+    user_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserProfile
+        fields = (
+            'id', 'phone_number', 'date_of_birth', 'gender', 'bio', 'avatar',
+            'location', 'country', 'latitude', 'longitude',
+            'organization', 'farm_name', 'farm_size', 'primary_crops',
+            'email_verified', 'phone_verified', 'profile_completed',
+            'user_name', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'email_verified', 'created_at', 'updated_at', 'user_name')
+    
+    def get_user_name(self, obj):
+        """Return full name from related user"""
+        if obj.user.first_name and obj.user.last_name:
+            return f"{obj.user.first_name} {obj.user.last_name}"
+        return obj.user.email
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    """Serializer for CustomUser with profile details"""
+    profile = UserProfileSerializer(read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'first_name', 'last_name', 'is_active', 'date_joined', 'profile')
+        read_only_fields = ('id', 'email', 'is_active', 'date_joined')
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Basic user serializer for login/registration responses"""
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name')

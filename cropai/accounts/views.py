@@ -1,14 +1,13 @@
 """
 accounts/views.py - JWT authentication views with session tracking and remember me
 """
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, get_user_model
 from django.utils import timezone
 from datetime import timedelta
 from user_agents import parse
@@ -16,6 +15,8 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 from .models import UserSession
 from .serializers import UserSerializer, UserSessionSerializer, LoginSerializer, RegisterSerializer
+
+User = get_user_model()
 
 
 def get_device_info(request):
@@ -59,7 +60,6 @@ def register_view(request):
     POST /api/v1/auth/register/
     
     Register a new user with email and password.
-    Username is auto-generated from email.
     Returns:
       - access token (in response body, in-memory only)
       - refresh token (in httpOnly cookie)
@@ -70,22 +70,8 @@ def register_view(request):
     
     email = serializer.validated_data['email']
     
-    # Generate unique username from email (use email prefix + UUID suffix if needed)
-    email_prefix = email.split('@')[0]
-    base_username = email_prefix[:30]  # Max 30 chars to leave room for suffix
-    username = base_username
-    
-    # Check if username exists, add random suffix if needed
-    counter = 1
-    while User.objects.filter(username=username).exists():
-        import uuid
-        suffix = str(uuid.uuid4())[:8]
-        username = f"{base_username[:22]}_{suffix}"
-        counter += 1
-    
-    # Create new user
+    # Create new user (email is USERNAME_FIELD in CustomUser)
     user = User.objects.create_user(
-        username=username,
         email=email,
         password=serializer.validated_data['password'],
         first_name=serializer.validated_data.get('first_name', ''),
@@ -399,3 +385,66 @@ def sessions_view(request):
             ).delete()
         
         return Response({'detail': 'Session(s) revoked'})
+
+
+@extend_schema(
+    tags=['User Profile'],
+    summary='Get/Update User Profile',
+    description='GET: Retrieve full profile of authenticated user. PATCH/PUT: Update user profile details.',
+    request=serializers.Serializer(),
+    responses={200: 'UserDetailSerializer'}
+)
+@api_view(['GET', 'PATCH', 'PUT'])
+@permission_classes([IsAuthenticated])
+def user_profile_view(request):
+    """
+    GET /api/v1/auth/profile/
+    - Returns complete user profile with all details for UI display.
+    
+    PATCH/PUT /api/v1/auth/profile/
+    - Update user profile details. All fields except verified flags are updatable.
+    """
+    from .serializers import UserDetailSerializer, UserProfileSerializer
+    
+    if request.method == 'GET':
+        serializer = UserDetailSerializer(request.user)
+        return Response(serializer.data)
+    
+    elif request.method in ['PATCH', 'PUT']:
+        profile = request.user.profile
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+@extend_schema(
+    tags=['User Profile'],
+    summary='Update User Basic Info',
+    description='Update user first name and last name.',
+    request=serializers.Serializer(),
+    responses={200: 'UserSerializer'}
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def user_basic_info_view(request):
+    """
+    PATCH /api/v1/auth/user/basic/
+    
+    Update basic user info (first_name, last_name).
+    """
+    user = request.user
+    
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+    
+    if first_name is not None:
+        user.first_name = first_name
+    if last_name is not None:
+        user.last_name = last_name
+    
+    user.save()
+    
+    from .serializers import UserSerializer
+    serializer = UserSerializer(user)
+    return Response(serializer.data)
