@@ -17,5 +17,9 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
 ]
 
-api_urlpatterns = api_router.urls
+# Combine router URLs with custom meta endpoints
+api_urlpatterns = api_router.urls + [
+    path('meta/locations/', views.get_locations, name='meta-locations'),
+    path('meta/crops/', views.get_crops, name='meta-crops'),
+]
 
