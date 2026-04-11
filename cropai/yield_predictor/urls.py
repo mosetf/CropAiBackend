@@ -1,5 +1,5 @@
 """
-yield_predictor/urls.py - All URL routing: function-based and DRF API
+yield_predictor/urls.py - URL routing for REST API endpoints
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -11,11 +11,7 @@ api_router = DefaultRouter()
 api_router.register(r'predictions', views.YieldPredictionViewSet, basename='prediction')
 api_router.register(r'crops', views.CropModelViewSet, basename='crop')
 
-urlpatterns = [
-    path('', views.landing_page, name='landing'),
-    path('predict/', views.predict_yield, name='predict_yield'),
-    path('dashboard/', views.dashboard, name='dashboard'),
-]
+urlpatterns = []
 
 # Combine router URLs with custom meta endpoints
 api_urlpatterns = api_router.urls + [
