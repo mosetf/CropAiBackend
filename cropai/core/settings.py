@@ -34,9 +34,6 @@ BASE_URL = config('BASE_URL', default='http://localhost:8000')
 # STATIC & MEDIA FILES
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'yield_predictor' / 'static',
-]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -51,18 +48,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'yield_predictor',
     'accounts',
-    'django.contrib.sites',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'crispy_forms',
-    'crispy_bootstrap5',
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'dj_rest_auth',
     'drf_spectacular',
 ]
 
@@ -76,40 +66,20 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
 ]
 
 # AUTHENTICATION & AUTHORIZATION
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-)
-
 AUTH_USER_MODEL = 'accounts.CustomUser'
-
-SITE_ID = 1
-
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = True
-ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
-ACCOUNT_LOGOUT_ON_GET = True
-ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-
-LOGIN_REDIRECT_URL = '/dashboard/'
-
-CRISPY_ALLOWED_TEMPLATE_PACK = "bootstrap5"
-CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # URL CONFIGURATION
 ROOT_URLCONF = 'core.urls'
 
-# TEMPLATES
+# TEMPLATES (minimal config - no HTML templates served)
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'core' / 'templates'],
-        'APP_DIRS': True,
+        'DIRS': [],
+        'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
