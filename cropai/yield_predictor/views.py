@@ -1,16 +1,16 @@
 """
 yield_predictor/views.py - DRF viewsets and API endpoints only
 """
-from rest_framework import viewsets, mixins, permissions
+from django.conf import settings
+from rest_framework import viewsets, mixins, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.exceptions import ValidationError
-from django.conf import settings as django_settings
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 from .models import YieldPrediction, CropModel
-from .serializers import YieldPredictionSerializer, CropModelSerializer
+from .serializers import YieldPredictionSerializer, CropModelSerializer, PredictionInputForm
 from .services.prediction_service import LOCATION_COORDS, run_prediction
+from .services.weather_service import get_current_weather as fetch_weather, WeatherUnavailableError
 
 # DRF VIEWSETS (REST API endpoints)
 @extend_schema(
@@ -25,13 +25,13 @@ class YieldPredictionViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    API endpoint for yield predictions (immutable records – no update/replace).
+    API endpoint for yield predictions.
 
     list:    GET /api/v1/predictions/
              Returns paginated list of user's predictions
 
     create:  POST /api/v1/predictions/
-             Accepts crop inputs, runs the prediction pipeline, and stores results.
+             Create new prediction — runs XGBoost + RAG pipeline
 
     retrieve: GET /api/v1/predictions/{id}/
               Get specific prediction by ID
@@ -39,21 +39,24 @@ class YieldPredictionViewSet(
     destroy: DELETE /api/v1/predictions/{id}/
              Delete a prediction
 
-    Writable inputs:
+    Input fields (POST):
     - crop: str (maize, wheat, beans, etc)
     - location: str (Nakuru, Mombasa, etc)
+    - soil_ph: float (3–10)
+    - soil_moisture: float (0–100%)
+    - organic_carbon: float (0–20%)
+    - fertilizer_kg_ha: float (kg/ha)
     - planting_date: date (YYYY-MM-DD)
-    - soil_ph: float (0-14)
-    - soil_moisture: float (0-100%)
-    - organic_carbon: float (%)
-    - fertilizer_kg_ha: float
+    - rainfall: float (mm/season)
+    - temperature: float (°C average)
+    - humidity: float (% relative)
+    - market_price: float (optional, KES/tonne override)
+    - labour_cost: float (optional, KES/ha override)
 
-    Returns (server-computed, read-only):
-    - predicted_yield: float (tonnes/ha)
-    - yield_low/high: float (confidence interval)
-    - net_profit: float (KES)
-    - risk_level: str (low, medium, high)
-    - ai_recommendations: list
+    Computed by backend (do NOT send):
+    - predicted_yield, yield_low, yield_high
+    - harvest_window, net_profit
+    - ai_recommendations, risk_level, risk_reason
     """
     serializer_class = YieldPredictionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -61,61 +64,74 @@ class YieldPredictionViewSet(
     def get_queryset(self):
         return YieldPrediction.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
-        data = serializer.validated_data
+    def create(self, request, *args, **kwargs):
+        # Map frontend field names to form field names
+        form_data = dict(request.data)
+        if 'fertilizer_kg_ha' in form_data:
+            form_data['fertilizer'] = form_data.pop('fertilizer_kg_ha')
 
-        api_settings = {
-            'api_key': getattr(django_settings, 'API_KEY', ''),
-            'base_url': getattr(django_settings, 'BASE_URL', ''),
-            'forecast_url': getattr(django_settings, 'FORECAST_URL', ''),
-        }
+        # Validate input using PredictionInputForm
+        form = PredictionInputForm(form_data)
+        if not form.is_valid():
+            return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Run the full prediction pipeline
+        service_input = form.to_service_dict()
         result = run_prediction(
-            crop=data['crop'],
-            location=data['location'],
-            soil_data={
-                'soil_ph': data.get('soil_ph', 6.0),
-                'soil_moisture': data.get('soil_moisture', 25.0),
-                'organic_carbon': data.get('organic_carbon', 1.5),
+            crop=service_input['crop'],
+            location=service_input['location'],
+            soil_data=service_input['soil_data'],
+            fertilizer=service_input['fertilizer'],
+            planting_date=service_input['planting_date'],
+            api_settings={
+                'api_key': settings.API_KEY,
+                'base_url': settings.BASE_URL,
+                'forecast_url': settings.FORECAST_URL,
             },
-            fertilizer=data.get('fertilizer_kg_ha', 100.0),
-            planting_date=data['planting_date'],
-            api_settings=api_settings,
+            market_price_override=service_input.get('market_price_override'),
+            labour_cost_override=service_input.get('labour_cost_override'),
         )
 
-        if not result.get('success'):
-            # Log the internal error without exposing it to the client
-            import logging
-            logging.getLogger(__name__).error(
-                'Prediction pipeline failed for user %s: %s',
-                self.request.user.pk,
-                result.get('error', ''),
-            )
-            raise ValidationError(
-                {'detail': 'Prediction could not be completed. Please check your inputs and try again.'}
+        if not result['success']:
+            return Response(
+                {'detail': result.get('error', 'Prediction failed')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        loc_info = LOCATION_COORDS.get(data['location'], {})
-        planting_month = data['planting_date'].month
-        season = 'long_rains' if planting_month in [3, 4, 5] else 'short_rains'
+        # Override weather with user-provided values if present
+        user_rainfall = request.data.get('rainfall', result['weather_data']['rainfall'])
+        user_temp = request.data.get('temperature', result['weather_data']['temp'])
+        user_humidity = request.data.get('humidity', result['weather_data']['humidity'])
 
-        serializer.save(
-            user=self.request.user,
-            region=loc_info.get('region', ''),
-            season=season,
+        # Save to database
+        prediction = YieldPrediction.objects.create(
+            user=request.user,
+            crop=service_input['crop'],
+            location=service_input['location'],
+            region=LOCATION_COORDS.get(service_input['location'], {}).get('region', ''),
+            planting_date=service_input['planting_date'],
+            season=result.get('season', ''),
             predicted_yield=result['predicted_yield'],
             yield_low=result['yield_range'][0],
             yield_high=result['yield_range'][1],
             harvest_window=result['harvest_window'],
             net_profit=result['net_profit'],
-            rainfall=result['weather_data']['rainfall'],
-            temperature=result['weather_data']['temp'],
-            humidity=result['weather_data']['humidity'],
+            rainfall=user_rainfall,
+            temperature=user_temp,
+            humidity=user_humidity,
+            soil_ph=service_input['soil_data']['soil_ph'],
+            soil_moisture=service_input['soil_data']['soil_moisture'],
+            organic_carbon=service_input['soil_data']['organic_carbon'],
+            fertilizer_kg_ha=service_input['fertilizer'],
             ai_recommendations=result['ai_recommendations'],
             risk_level=result['risk_level'],
             risk_reason=result.get('risk_reason', ''),
             fallback_used=result.get('fallback_used', False),
+            model_version=result.get('model_source', ''),
         )
+
+        serializer = self.get_serializer(prediction)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(
@@ -273,3 +289,74 @@ def get_crops(request):
         'count': len(crops_list)
     })
 
+
+@extend_schema(
+    tags=['Weather'],
+    summary='Get Current Weather',
+    description='Returns current weather for a location using lat/lon. Used for live weather preview on the prediction form.',
+    responses={
+        200: OpenApiResponse(
+            description='Current weather data',
+            response={
+                'type': 'object',
+                'properties': {
+                    'temperature': {'type': 'number', 'description': 'Temperature in °C'},
+                    'humidity': {'type': 'number', 'description': 'Relative humidity %'},
+                    'description': {'type': 'string', 'description': 'Weather description'},
+                    'source': {'type': 'string', 'description': 'openweather or fallback'},
+                }
+            }
+        )
+    }
+)
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_current_weather(request):
+    """
+    GET /api/v1/weather/current/?lat=X&lon=Y
+
+    Returns current weather for preview on the frontend.
+    Does NOT require authentication.
+    """
+    lat = request.query_params.get('lat')
+    lon = request.query_params.get('lon')
+
+    if not lat or not lon:
+        return Response(
+            {'error': 'lat and lon query parameters are required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        lat_f = float(lat)
+        lon_f = float(lon)
+    except ValueError:
+        return Response(
+            {'error': 'lat and lon must be valid numbers'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        weather = fetch_weather(
+            location='',
+            lat=lat_f,
+            lon=lon_f,
+            api_key=settings.API_KEY,
+            base_url=settings.BASE_URL,
+        )
+        return Response({
+            'temperature': round(weather['temperature'], 1),
+            'humidity': round(weather['humidity'], 1),
+            'description': 'Current conditions',
+            'source': 'openweather',
+        })
+    except WeatherUnavailableError:
+        return Response(
+            {'error': f'Weather data unavailable for this location. Prediction will use estimated conditions.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    except Exception:
+        return Response(
+            {'error': 'Unable to fetch weather data at this time.'},
+            status=status.HTTP_502_BAD_GATEWAY
+        )
