@@ -78,4 +78,4 @@ class YieldPrediction(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} — {self.crop} @ {self.location} ({self.created_at:%Y-%m-%d})"
+        return f"{self.user.email} — {self.crop} @ {self.location} ({self.created_at:%Y-%m-%d})"
