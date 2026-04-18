@@ -150,7 +150,7 @@ vercel --prod
 ### Backend
 ```bash
 # Check health
-curl -H "Authorization: Bearer <token>" https://api.cropai.example.com/api/v1/auth/current-user/
+curl -H "Authorization: Bearer <token>" https://api.cropai.example.com/api/v1/auth/user/
 
 # Check CORS
 curl -H "Origin: https://cropai.example.com" \
