@@ -93,6 +93,174 @@ FEATURES = [
 ]
 
 
+# ── Rule-based recommendation engine ────────────────────────────────
+# Generates specific, data-driven recommendations when the Qwen RAG
+# model is unavailable. Uses actual yield, weather, and soil data to
+# provide contextual, crop-specific advice.
+
+CROP_NUTRIENT_GUIDE = {
+    "maize":    {"n_kg_ha": 120, "p_kg_ha": 60,  "k_kg_ha": 40,  "optimal_ph": "5.8–7.0"},
+    "beans":    {"n_kg_ha": 20,  "p_kg_ha": 40,  "k_kg_ha": 40,  "optimal_ph": "6.0–7.5"},
+    "wheat":    {"n_kg_ha": 100, "p_kg_ha": 50,  "k_kg_ha": 50,  "optimal_ph": "6.0–7.5"},
+    "sorghum":  {"n_kg_ha": 80,  "p_kg_ha": 40,  "k_kg_ha": 30,  "optimal_ph": "5.5–8.5"},
+    "coffee":   {"n_kg_ha": 150, "p_kg_ha": 60,  "k_kg_ha": 80,  "optimal_ph": "5.5–6.5"},
+    "tea":      {"n_kg_ha": 200, "p_kg_ha": 60,  "k_kg_ha": 100, "optimal_ph": "4.5–5.5"},
+    "potatoes": {"n_kg_ha": 150, "p_kg_ha": 60,  "k_kg_ha": 120, "optimal_ph": "5.0–6.0"},
+    "cassava":  {"n_kg_ha": 80,  "p_kg_ha": 40,  "k_kg_ha": 100, "optimal_ph": "5.5–6.5"},
+    "rice":     {"n_kg_ha": 100, "p_kg_ha": 50,  "k_kg_ha": 50,  "optimal_ph": "5.5–7.0"},
+}
+
+CROP_YIELD_BENCHMARK = {
+    "maize": 3.5, "beans": 1.2, "wheat": 3.0,
+    "sorghum": 2.0, "coffee": 1.5, "tea": 2.5,
+    "potatoes": 15.0, "cassava": 12.0, "rice": 3.0,
+}
+
+
+def _generate_rule_based_recommendations(data: dict) -> dict:
+    """
+    Generate specific, data-driven recommendations based on actual
+    prediction values, weather, soil conditions, and crop type.
+
+    Returns dict with: recommendations (list), risk_level, risk_reason, fallback=True
+    """
+    crop = data["crop"]
+    location = data["location"]
+    yield_pred = data["yield"]
+    temp = data["temp"]
+    rainfall = data["rainfall"]
+    humidity = data["humidity"]
+    soil_ph = data["soil_ph"]
+    soil_moisture = data["soil_moisture"]
+    organic_carbon = data["organic_carbon"]
+    fertilizer = data["fertilizer"]
+    planting_date = data["planting_date"]
+
+    crop_guide = CROP_NUTRIENT_GUIDE.get(crop, CROP_NUTRIENT_GUIDE["maize"])
+    benchmark = CROP_YIELD_BENCHMARK.get(crop, 2.0)
+    recommendations = []
+
+    # ── 1. Fertilizer recommendation ─────────────────────────────
+    n_need = crop_guide["n_kg_ha"]
+    if fertilizer < n_need * 0.7:
+        deficit = n_need - fertilizer
+        recommendations.append(
+            f"Apply {deficit:.0f} kg/ha more nitrogen (N) to reach the optimal "
+            f"{n_need} kg/ha for {crop}. Current application of {fertilizer:.0f} kg/ha "
+            f"is below the crop's requirement, limiting yield potential."
+        )
+    elif fertilizer > n_need * 1.3:
+        excess = fertilizer - n_need
+        recommendations.append(
+            f"Fertilizer application ({fertilizer:.0f} kg/ha) exceeds the optimal "
+            f"{n_need} kg/ha for {crop} by {excess:.0f} kg/ha. Reduce to avoid nutrient "
+            f"runoff, soil degradation, and unnecessary cost."
+        )
+    else:
+        recommendations.append(
+            f"Fertilizer rate ({fertilizer:.0f} kg/ha) is close to the recommended "
+            f"{n_need} kg/ha for {crop}. Split application: 40% at planting, 40% at "
+            f"top-dressing ({crop_guide['n_kg_ha'] * 0.4:.0f} kg/ha), and 20% at "
+            f"flowering for best uptake."
+        )
+
+    # ── 2. Soil pH recommendation ────────────────────────────────
+    ph_opt_min, ph_opt_max = _parse_ph_range(crop_guide["optimal_ph"])
+    if soil_ph < ph_opt_min:
+        recommendations.append(
+            f"Soil pH ({soil_ph:.1f}) is below the optimal range ({crop_guide['optimal_ph']}) "
+            f"for {crop}. Apply agricultural lime at 2–4 tonnes/ha to raise pH. "
+            f"Low pH reduces nutrient availability, especially phosphorus and calcium."
+        )
+    elif soil_ph > ph_opt_max:
+        recommendations.append(
+            f"Soil pH ({soil_ph:.1f}) is above the optimal range ({crop_guide['optimal_ph']}) "
+            f"for {crop}. Incorporate organic matter or elemental sulfur to gradually "
+            f"lower pH. High pH can cause micronutrient deficiencies (iron, zinc)."
+        )
+    elif organic_carbon < 2.0:
+        recommendations.append(
+            f"Soil pH is acceptable ({soil_ph:.1f}), but organic carbon is low "
+            f"({organic_carbon:.1f}%, target >2%). Add 5–10 tonnes/ha of compost or "
+            f"well-rotted manure before the next planting to improve soil structure "
+            f"and nutrient retention."
+        )
+
+    # ── 3. Yield & weather-specific recommendation ────────────────
+    yield_pct = (yield_pred / benchmark) * 100 if benchmark > 0 else 100
+
+    if yield_pct < 70:
+        recommendations.append(
+            f"Predicted yield ({yield_pred:.1f} t/ha) is {yield_pct:.0f}% of the "
+            f"regional benchmark ({benchmark:.1f} t/ha) for {crop} in {location}. "
+            f"Consider drought-tolerant varieties, improved irrigation, or intercropping "
+            f"with legumes to boost productivity."
+        )
+    elif yield_pct < 90:
+        recommendations.append(
+            f"Predicted yield ({yield_pred:.1f} t/ha) is slightly below the "
+            f"regional benchmark ({benchmark:.1f} t/ha) for {crop} in {location}. "
+            f"Top-dress with {crop_guide['n_kg_ha'] * 0.3:.0f} kg/ha N at the "
+            f"vegetative stage and ensure adequate soil moisture during flowering."
+        )
+    else:
+        recommendations.append(
+            f"Predicted yield ({yield_pred:.1f} t/ha) meets or exceeds the "
+            f"regional benchmark ({benchmark:.1f} t/ha) for {crop} in {location}. "
+            f"Maintain current practices. Monitor for pests during grain filling "
+            f"stage to protect the crop through harvest."
+        )
+
+    # ── Risk assessment ──────────────────────────────────────────
+    risk_factors = 0
+    risk_reasons = []
+
+    if temp < 12 or temp > 35:
+        risk_factors += 1
+        risk_reasons.append(f"Temperature stress at {temp:.1f}°C")
+    if rainfall < 400:
+        risk_factors += 1
+        risk_reasons.append(f"Low seasonal rainfall ({rainfall:.0f}mm, minimum 400mm)")
+    if rainfall > 1500:
+        risk_factors += 1
+        risk_reasons.append(f"Excess rainfall ({rainfall:.0f}mm) risks waterlogging")
+    if soil_ph < 5.0 or soil_ph > 8.5:
+        risk_factors += 1
+        risk_reasons.append(f"Extreme soil pH ({soil_ph:.1f})")
+    if humidity > 85:
+        risk_factors += 1
+        risk_reasons.append(f"High humidity ({humidity:.0f}%) increases disease risk")
+    if yield_pct < 70:
+        risk_factors += 1
+        risk_reasons.append(f"Yield {yield_pct:.0f}% below benchmark")
+
+    if risk_factors >= 3:
+        risk_level = "high"
+    elif risk_factors >= 1:
+        risk_level = "medium"
+    else:
+        risk_level = "low"
+
+    risk_reason = "; ".join(risk_reasons) if risk_reasons else "Conditions are favorable for good yield"
+
+    return {
+        "recommendations": recommendations[:3],
+        "risk_level": risk_level,
+        "risk_reason": risk_reason,
+        "fallback": True,
+    }
+
+
+def _parse_ph_range(ph_str: str) -> tuple:
+    """Parse a pH range string like '5.5–7.0' into (min, max)."""
+    parts = ph_str.replace("–", "-").split("-")
+    try:
+        return float(parts[0].strip()), float(parts[1].strip())
+    except (ValueError, IndexError):
+        return 5.5, 7.0
+
+
+# ── Main prediction pipeline ──────────────────────────────────────
 def run_prediction(
     crop: str, 
     location: str, 
@@ -237,7 +405,7 @@ def run_prediction(
         yield_high = round(yield_pred * 1.15, 2)
         logger.info(f" Confidence interval: [{yield_low}, {yield_high}] t/ha")
         
-        # 7. Get RAG-based AI recommendations
+        # 7. Get AI recommendations
         logger.info(f"Getting AI recommendations...")
         try:
             ai_result = get_recommendations({
@@ -246,18 +414,32 @@ def run_prediction(
                 "yield": yield_pred,
                 "temp": weather_features["temp_avg_c"],
                 "rainfall": weather_features["rainfall_season_mm"],
+                "humidity": weather_features["humidity_pct"],
                 "soil_ph": soil_data.get("soil_ph", 6.0),
+                "soil_moisture": soil_data.get("soil_moisture", 25.0),
+                "organic_carbon": soil_data.get("organic_carbon", 1.5),
                 "fertilizer": fertilizer,
+                "planting_date": str(planting_date),
             })
             logger.info(f"AI recommendations: {ai_result.get('recommendations', [])}")
         except Exception as e:
             logger.warning(f"  RAG recommendations failed: {e}")
-            ai_result = {
-                "recommendations": ["Plant early for optimal yield", "Monitor weather conditions", "Apply balanced fertilizer"],
-                "risk_level": "medium",
-                "risk_reason": "Normal growing conditions expected",
-                "fallback": True
-            }
+            # Use rule-based fallback — generates specific, data-driven recommendations
+            ai_result = _generate_rule_based_recommendations({
+                "crop": crop,
+                "location": location,
+                "yield": yield_pred,
+                "temp": weather_features["temp_avg_c"],
+                "rainfall": weather_features["rainfall_season_mm"],
+                "humidity": weather_features["humidity_pct"],
+                "soil_ph": soil_data.get("soil_ph", 6.0),
+                "soil_moisture": soil_data.get("soil_moisture", 25.0),
+                "organic_carbon": soil_data.get("organic_carbon", 1.5),
+                "fertilizer": fertilizer,
+                "planting_date": planting_date,
+                "yield_low": yield_low,
+                "yield_high": yield_high,
+            })
         
         # 8. Calculate business metrics
         logger.info(f" Calculating business metrics...")
