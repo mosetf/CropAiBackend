@@ -107,9 +107,9 @@ class PredictionInputForm(forms.Form):
     def clean_planting_date(self):
         d = self.cleaned_data['planting_date']
         today = date.today()
-        if d < today - timedelta(days=60):
+        if d < today - timedelta(days=180):
             raise forms.ValidationError(
-                'Planting date is too far in the past (max 60 days ago).'
+                'Planting date is too far in the past (max 180 days ago).'
             )
         if d > today + timedelta(days=180):
             raise forms.ValidationError(
@@ -187,7 +187,7 @@ class YieldPredictionSerializer(serializers.ModelSerializer):
             'harvest_window', 'net_profit',
             'rainfall', 'temperature', 'humidity',
             'ai_recommendations', 'risk_level', 'risk_reason',
-            'fallback_used', 'created_at',
+            'fallback_used', 'model_version', 'created_at',
         )
         read_only_fields = (
             'id', 'user_email',
@@ -196,5 +196,5 @@ class YieldPredictionSerializer(serializers.ModelSerializer):
             'harvest_window', 'net_profit',
             'rainfall', 'temperature', 'humidity',
             'ai_recommendations', 'risk_level', 'risk_reason',
-            'fallback_used', 'created_at',
+            'fallback_used', 'model_version', 'created_at',
         )
