@@ -17,5 +17,6 @@ urlpatterns = []
 api_urlpatterns = api_router.urls + [
     path('meta/locations/', views.get_locations, name='meta-locations'),
     path('meta/crops/', views.get_crops, name='meta-crops'),
+    path('weather/current/', views.get_current_weather, name='weather-current'),
 ]
 
