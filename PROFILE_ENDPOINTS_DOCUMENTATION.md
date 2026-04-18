@@ -160,7 +160,7 @@ curl -X PATCH \
     "first_name": "John",
     "last_name": "Kariuki"
   }' \
-  https://api.cropai.com/api/v1/auth/profile/user/basic/
+  https://api.cropai.com/api/v1/auth/user/basic/
 ```
 
 **Response (200 OK):**
