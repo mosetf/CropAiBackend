@@ -12,3 +12,5 @@ media/
 staticfiles/
 migrations/
 .DS_Store
+logs/
+docs/

@@ -1,116 +1,108 @@
-import json
-from datetime import datetime
+"""
+yield_predictor/views.py - DRF viewsets and API endpoints only
+"""
+from rest_framework import viewsets, mixins, permissions
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError
+from django.conf import settings as django_settings
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.conf import settings
+from .models import YieldPrediction, CropModel
+from .serializers import YieldPredictionSerializer, CropModelSerializer
+from .services.prediction_service import LOCATION_COORDS, run_prediction
 
-from .models import YieldPrediction
-from .serializers import PredictionInputForm
-from .services import prediction_service, weather_service
-from .services.prediction_service import LOCATION_COORDS
-from .utils.crop_config import is_crop_available, get_available_crop_choices, get_all_crop_choices
+# DRF VIEWSETS (REST API endpoints)
+@extend_schema(
+    tags=['Yield Prediction'],
+    description='Manage yield predictions for authenticated users'
+)
+class YieldPredictionViewSet(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    API endpoint for yield predictions (immutable records – no update/replace).
 
+    list:    GET /api/v1/predictions/
+             Returns paginated list of user's predictions
 
-def landing_page(request):
-    return render(request, 'yield_predictor/landing.html')
+    create:  POST /api/v1/predictions/
+             Accepts crop inputs, runs the prediction pipeline, and stores results.
 
+    retrieve: GET /api/v1/predictions/{id}/
+              Get specific prediction by ID
 
-@login_required
-def dashboard(request):
-    predictions = YieldPrediction.objects.filter(
-        user=request.user
-    ).order_by('-created_at')[:50]
+    destroy: DELETE /api/v1/predictions/{id}/
+             Delete a prediction
 
-    forecast = []
-    latest_location = predictions[0].location if predictions else 'Nakuru'
-    coords = LOCATION_COORDS.get(latest_location, {'lat': -0.3031, 'lon': 36.08})
-    try:
-        forecast = weather_service.get_forecast(
-            lat=coords['lat'],
-            lon=coords['lon'],
-            api_key=settings.API_KEY,
-            forecast_url=settings.FORECAST_URL,
-        )
-    except Exception:
-        pass
+    Writable inputs:
+    - crop: str (maize, wheat, beans, etc)
+    - location: str (Nakuru, Mombasa, etc)
+    - planting_date: date (YYYY-MM-DD)
+    - soil_ph: float (0-14)
+    - soil_moisture: float (0-100%)
+    - organic_carbon: float (%)
+    - fertilizer_kg_ha: float
 
-    chart_data = None
-    if predictions:
-        chart_data = {
-            'labels':   [p.created_at.strftime('%b %d') for p in predictions[:10]],
-            'yields':   [float(p.predicted_yield) for p in predictions[:10]],
-            'profits':  [float(p.net_profit or 0) for p in predictions[:10]],
-            'rainfall': [float(p.rainfall or 0) for p in predictions[:10]],
+    Returns (server-computed, read-only):
+    - predicted_yield: float (tonnes/ha)
+    - yield_low/high: float (confidence interval)
+    - net_profit: float (KES)
+    - risk_level: str (low, medium, high)
+    - ai_recommendations: list
+    """
+    serializer_class = YieldPredictionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return YieldPrediction.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        data = serializer.validated_data
+
+        api_settings = {
+            'api_key': getattr(django_settings, 'API_KEY', ''),
+            'base_url': getattr(django_settings, 'BASE_URL', ''),
+            'forecast_url': getattr(django_settings, 'FORECAST_URL', ''),
         }
 
-    all_crops = get_all_crop_choices()
-    available_crops = get_available_crop_choices()
-    coming_soon = [c[0] for c in all_crops if c not in available_crops]
-
-    return render(request, 'yield_predictor/dashboard.html', {
-        'predictions':      predictions,
-        'locations':        sorted(LOCATION_COORDS.keys()),
-        'forecast':         forecast,
-        'chart_data_json':  json.dumps(chart_data) if chart_data else None,
-        'available_crops':  available_crops,
-        'coming_soon_crops': coming_soon,
-    })
-
-
-@login_required
-def predict_yield(request):
-    if request.method == 'POST':
-        form = PredictionInputForm(request.POST)
-        
-        crop = request.POST.get('crop', '')
-        if crop and not is_crop_available(crop):
-            form.add_error('crop', f'Model for {crop} is not yet available. Please select from available crops.')
-            return render(request, 'yield_predictor/predict_yield.html', {
-                'form':      form,
-                'locations': sorted(LOCATION_COORDS.keys()),
-                'available_crops': get_available_crop_choices(),
-            })
-
-        if not form.is_valid():
-            return render(request, 'yield_predictor/predict_yield.html', {
-                'form':      form,
-                'locations': sorted(LOCATION_COORDS.keys()),
-                'available_crops': get_available_crop_choices(),
-            })
-
-        service_input = form.to_service_dict()
-
-        result = prediction_service.run_prediction(
-            crop=service_input['crop'],
-            location=service_input['location'],
-            soil_data=service_input['soil_data'],
-            fertilizer=service_input['fertilizer'],
-            planting_date=service_input['planting_date'],
-            api_settings={
-                'api_key':      settings.API_KEY,
-                'base_url':     settings.BASE_URL,
-                'forecast_url': settings.FORECAST_URL,
+        result = run_prediction(
+            crop=data['crop'],
+            location=data['location'],
+            soil_data={
+                'soil_ph': data.get('soil_ph', 6.0),
+                'soil_moisture': data.get('soil_moisture', 25.0),
+                'organic_carbon': data.get('organic_carbon', 1.5),
             },
-            market_price_override=service_input.get('market_price_override'),
-            labour_cost_override=service_input.get('labour_cost_override'),
+            fertilizer=data.get('fertilizer_kg_ha', 100.0),
+            planting_date=data['planting_date'],
+            api_settings=api_settings,
         )
 
-        if not result['success']:
-            form.add_error(None, result['error'])
-            return render(request, 'yield_predictor/predict_yield.html', {
-                'form':      form,
-                'locations': sorted(LOCATION_COORDS.keys()),
-                'available_crops': get_available_crop_choices(),
-            })
+        if not result.get('success'):
+            # Log the internal error without exposing it to the client
+            import logging
+            logging.getLogger(__name__).error(
+                'Prediction pipeline failed for user %s: %s',
+                self.request.user.pk,
+                result.get('error', ''),
+            )
+            raise ValidationError(
+                {'detail': 'Prediction could not be completed. Please check your inputs and try again.'}
+            )
 
-        prediction = YieldPrediction.objects.create(
-            user=request.user,
-            crop=service_input['crop'],
-            location=service_input['location'],
-            region=LOCATION_COORDS.get(service_input['location'], {}).get('region', ''),
-            planting_date=service_input['planting_date'],
-            season=result.get('season', ''),
+        loc_info = LOCATION_COORDS.get(data['location'], {})
+        planting_month = data['planting_date'].month
+        season = 'long_rains' if planting_month in [3, 4, 5] else 'short_rains'
+
+        serializer.save(
+            user=self.request.user,
+            region=loc_info.get('region', ''),
+            season=season,
             predicted_yield=result['predicted_yield'],
             yield_low=result['yield_range'][0],
             yield_high=result['yield_range'][1],
@@ -119,27 +111,165 @@ def predict_yield(request):
             rainfall=result['weather_data']['rainfall'],
             temperature=result['weather_data']['temp'],
             humidity=result['weather_data']['humidity'],
-            soil_ph=service_input['soil_data']['soil_ph'],
-            soil_moisture=service_input['soil_data']['soil_moisture'],
-            organic_carbon=service_input['soil_data']['organic_carbon'],
-            fertilizer_kg_ha=service_input['fertilizer'],
             ai_recommendations=result['ai_recommendations'],
             risk_level=result['risk_level'],
-            risk_reason=result['risk_reason'],
-            fallback_used=result['fallback_used'],
-            model_version=result.get('model_source', ''),
+            risk_reason=result.get('risk_reason', ''),
+            fallback_used=result.get('fallback_used', False),
         )
 
-        return render(request, 'yield_predictor/predict_yield.html', {
-            'form':        PredictionInputForm(),
-            'locations':   sorted(LOCATION_COORDS.keys()),
-            'result':      result,
-            'prediction':  prediction,
-            'available_crops': get_available_crop_choices(),
-        })
 
-    return render(request, 'yield_predictor/predict_yield.html', {
-        'form':      PredictionInputForm(),
-        'locations': sorted(LOCATION_COORDS.keys()),
-        'available_crops': get_available_crop_choices(),
+@extend_schema(
+    tags=['Crop Models'],
+    description='Available crop models for prediction'
+)
+class CropModelViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint for crop models (read-only).
+    
+    list:    GET /api/v1/crops/
+             Returns available crop models with specs
+    
+    retrieve: GET /api/v1/crops/{id}/
+              Get specific crop model details
+    
+    Returns crop model info:
+    - name: str (display name)
+    - code: str (maize, wheat, etc)
+    - description: str
+    - version: str (model version)
+    - is_active: bool
+    """
+    queryset = CropModel.objects.filter(is_active=True)
+    serializer_class = CropModelSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+# META/REFERENCE DATA ENDPOINTS
+
+@extend_schema(
+    tags=['Meta'],
+    summary='Get Available Locations',
+    description='Returns list of all available locations for yield predictions. Use this to populate location dropdown in frontend.',
+    responses={
+        200: OpenApiResponse(
+            description='List of locations with metadata',
+            response={
+                'type': 'object',
+                'properties': {
+                    'locations': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'name': {'type': 'string', 'example': 'Nairobi'},
+                                'lat': {'type': 'number', 'example': -1.2864},
+                                'lon': {'type': 'number', 'example': 36.8172},
+                                'elevation_m': {'type': 'integer', 'example': 1795},
+                                'region': {'type': 'string', 'example': 'Nairobi Metropolitan'}
+                            }
+                        }
+                    },
+                    'count': {'type': 'integer', 'example': 47}
+                }
+            }
+        )
+    }
+)
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_locations(request):
+    """
+    GET /api/v1/meta/locations/
+    
+    Returns all available locations for predictions with their coordinates and region info.
+    Frontend should use this to populate location dropdowns.
+    
+    Response format:
+    {
+        "locations": [
+            {
+                "name": "Nairobi",
+                "lat": -1.2864,
+                "lon": 36.8172,
+                "elevation_m": 1795,
+                "region": "Nairobi Metropolitan"
+            },
+            ...
+        ],
+        "count": 47
+    }
+    """
+    locations_list = [
+        {
+            'name': name,
+            'lat': data['lat'],
+            'lon': data['lon'],
+            'elevation_m': data['elevation_m'],
+            'region': data['region']
+        }
+        for name, data in sorted(LOCATION_COORDS.items())
+    ]
+    
+    return Response({
+        'locations': locations_list,
+        'count': len(locations_list)
     })
+
+
+@extend_schema(
+    tags=['Meta'],
+    summary='Get Available Crops',
+    description='Returns list of all supported crops for yield predictions. Use this to populate crop dropdown in frontend.',
+    responses={
+        200: OpenApiResponse(
+            description='List of crops',
+            response={
+                'type': 'object',
+                'properties': {
+                    'crops': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string', 'example': 'maize'},
+                                'label': {'type': 'string', 'example': 'Maize'}
+                            }
+                        }
+                    },
+                    'count': {'type': 'integer', 'example': 9}
+                }
+            }
+        )
+    }
+)
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_crops(request):
+    """
+    GET /api/v1/meta/crops/
+    
+    Returns all supported crops for predictions.
+    Frontend should use this to populate crop dropdowns.
+    
+    Response format:
+    {
+        "crops": [
+            {"value": "maize", "label": "Maize"},
+            {"value": "beans", "label": "Beans"},
+            ...
+        ],
+        "count": 9
+    }
+    """
+    from .models import CROP_CHOICES
+    
+    crops_list = [
+        {'value': value, 'label': label}
+        for value, label in CROP_CHOICES
+    ]
+    
+    return Response({
+        'crops': crops_list,
+        'count': len(crops_list)
+    })
+
