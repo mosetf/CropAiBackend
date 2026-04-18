@@ -1,60 +1,121 @@
 """
 yield_predictor/views.py - DRF viewsets and API endpoints only
 """
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, mixins, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError
+from django.conf import settings as django_settings
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 from .models import YieldPrediction, CropModel
 from .serializers import YieldPredictionSerializer, CropModelSerializer
-from .services.prediction_service import LOCATION_COORDS
+from .services.prediction_service import LOCATION_COORDS, run_prediction
 
 # DRF VIEWSETS (REST API endpoints)
 @extend_schema(
     tags=['Yield Prediction'],
     description='Manage yield predictions for authenticated users'
 )
-class YieldPredictionViewSet(viewsets.ModelViewSet):
+class YieldPredictionViewSet(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
     """
-    API endpoint for yield predictions.
-    
+    API endpoint for yield predictions (immutable records – no update/replace).
+
     list:    GET /api/v1/predictions/
              Returns paginated list of user's predictions
-    
+
     create:  POST /api/v1/predictions/
-             Create new prediction with crop, location, soil data
-    
+             Accepts crop inputs, runs the prediction pipeline, and stores results.
+
     retrieve: GET /api/v1/predictions/{id}/
               Get specific prediction by ID
-    
+
     destroy: DELETE /api/v1/predictions/{id}/
              Delete a prediction
-    
-    Expects:
+
+    Writable inputs:
     - crop: str (maize, wheat, beans, etc)
     - location: str (Nakuru, Mombasa, etc)
+    - planting_date: date (YYYY-MM-DD)
     - soil_ph: float (0-14)
     - soil_moisture: float (0-100%)
-    - organic_carbon: float (g/kg)
+    - organic_carbon: float (%)
     - fertilizer_kg_ha: float
-    - planting_date: date (YYYY-MM-DD)
-    
-    Returns:
+
+    Returns (server-computed, read-only):
     - predicted_yield: float (tonnes/ha)
     - yield_low/high: float (confidence interval)
     - net_profit: float (KES)
     - risk_level: str (low, medium, high)
-    - ai_recommendations: str
+    - ai_recommendations: list
     """
     serializer_class = YieldPredictionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         return YieldPrediction.objects.filter(user=self.request.user)
-    
+
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        data = serializer.validated_data
+
+        api_settings = {
+            'api_key': getattr(django_settings, 'API_KEY', ''),
+            'base_url': getattr(django_settings, 'BASE_URL', ''),
+            'forecast_url': getattr(django_settings, 'FORECAST_URL', ''),
+        }
+
+        result = run_prediction(
+            crop=data['crop'],
+            location=data['location'],
+            soil_data={
+                'soil_ph': data.get('soil_ph', 6.0),
+                'soil_moisture': data.get('soil_moisture', 25.0),
+                'organic_carbon': data.get('organic_carbon', 1.5),
+            },
+            fertilizer=data.get('fertilizer_kg_ha', 100.0),
+            planting_date=data['planting_date'],
+            api_settings=api_settings,
+        )
+
+        if not result.get('success'):
+            # Log the internal error without exposing it to the client
+            import logging
+            logging.getLogger(__name__).error(
+                'Prediction pipeline failed for user %s: %s',
+                self.request.user.pk,
+                result.get('error', ''),
+            )
+            raise ValidationError(
+                {'detail': 'Prediction could not be completed. Please check your inputs and try again.'}
+            )
+
+        loc_info = LOCATION_COORDS.get(data['location'], {})
+        planting_month = data['planting_date'].month
+        season = 'long_rains' if planting_month in [3, 4, 5] else 'short_rains'
+
+        serializer.save(
+            user=self.request.user,
+            region=loc_info.get('region', ''),
+            season=season,
+            predicted_yield=result['predicted_yield'],
+            yield_low=result['yield_range'][0],
+            yield_high=result['yield_range'][1],
+            harvest_window=result['harvest_window'],
+            net_profit=result['net_profit'],
+            rainfall=result['weather_data']['rainfall'],
+            temperature=result['weather_data']['temp'],
+            humidity=result['weather_data']['humidity'],
+            ai_recommendations=result['ai_recommendations'],
+            risk_level=result['risk_level'],
+            risk_reason=result.get('risk_reason', ''),
+            fallback_used=result.get('fallback_used', False),
+        )
 
 
 @extend_schema(

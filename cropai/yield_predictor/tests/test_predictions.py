@@ -2,7 +2,7 @@
 yield_predictor/test_predictions.py - Tests for prediction endpoints
 """
 import pytest
-from django.contrib.auth.models import User
+from unittest.mock import patch
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -65,27 +65,39 @@ class TestPredictionListCreate:
         # Verify viewing only own predictions
         if isinstance(response.data, list):
             for pred in response.data:
-                assert pred['user_username'] == test_user.username
+                assert pred['user_email'] == test_user.email
 
     def test_create_prediction_success(self, authenticated_client, test_user):
-        """Test creating a prediction."""
+        """Test creating a prediction via the API (mocks the ML pipeline)."""
         data = {
             'crop': 'maize',
             'location': 'Nakuru',
             'planting_date': '2026-01-01',
-            'predicted_yield': 5.5,
-            'harvest_window': 'June 2026',
-            'net_profit': 50000,
-            'rainfall': 600,
-            'temperature': 22,
-            'humidity': 65
+            'soil_ph': 6.0,
+            'soil_moisture': 25.0,
+            'organic_carbon': 1.5,
+            'fertilizer_kg_ha': 100.0,
         }
-        
-        response = authenticated_client.post('/api/v1/predictions/', data, format='json')
-        
+
+        mock_result = {
+            'success': True,
+            'predicted_yield': 5.5,
+            'yield_range': [4.68, 6.33],
+            'harvest_window': 'May 21, 2026 to June 10, 2026',
+            'net_profit': 167500.0,
+            'weather_data': {'temp': 22.0, 'rainfall': 800.0, 'humidity': 65.0},
+            'ai_recommendations': ['Apply fertilizer early'],
+            'risk_level': 'low',
+            'risk_reason': 'Good growing conditions',
+            'fallback_used': False,
+        }
+
+        with patch('yield_predictor.views.run_prediction', return_value=mock_result):
+            response = authenticated_client.post('/api/v1/predictions/', data, format='json')
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['crop'] == 'maize'
-        assert response.data['user_username'] == test_user.username
+        assert response.data['user_email'] == test_user.email
 
     def test_create_prediction_unauthenticated_fails(self, api_client):
         """Test creating prediction without authentication fails."""
@@ -93,12 +105,10 @@ class TestPredictionListCreate:
             'crop': 'maize',
             'location': 'Nakuru',
             'planting_date': '2026-01-01',
-            'predicted_yield': 5.5,
-            'harvest_window': 'June 2026',
-            'net_profit': 50000,
-            'rainfall': 600,
-            'temperature': 22,
-            'humidity': 65
+            'soil_ph': 6.0,
+            'soil_moisture': 25.0,
+            'organic_carbon': 1.5,
+            'fertilizer_kg_ha': 100.0,
         }
         
         response = api_client.post('/api/v1/predictions/', data, format='json')
@@ -110,7 +120,7 @@ class TestPredictionListCreate:
         data = {
             'crop': 'maize',
             'location': 'Nakuru'
-            # Missing required fields
+            # Missing required planting_date
         }
         
         response = authenticated_client.post('/api/v1/predictions/', data, format='json')
