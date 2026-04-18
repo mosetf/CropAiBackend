@@ -164,37 +164,19 @@ class CropModelSerializer(serializers.ModelSerializer):
 
 
 class YieldPredictionSerializer(serializers.ModelSerializer):
-    """Serializer for yield predictions.
-
-    Writable input fields (provided by the client):
-        crop, location, planting_date, soil_ph, soil_moisture,
-        organic_carbon, fertilizer_kg_ha
-
-    All other fields are server-computed outputs and are read-only.
-    """
+    """Serializer for yield predictions."""
+    user_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
         model = YieldPrediction
         fields = (
-            'id', 'user_email',
-            # --- client-supplied inputs ---
-            'crop', 'location', 'planting_date',
-            'soil_ph', 'soil_moisture', 'organic_carbon', 'fertilizer_kg_ha',
-            # --- server-computed outputs ---
-            'region', 'season',
-            'predicted_yield', 'yield_low', 'yield_high',
-            'harvest_window', 'net_profit',
-            'rainfall', 'temperature', 'humidity',
-            'ai_recommendations', 'risk_level', 'risk_reason',
-            'fallback_used', 'model_version', 'created_at',
+            'id', 'user_username', 'user_email', 'crop', 'location', 'region',
+            'planting_date', 'season', 'predicted_yield', 'yield_low',
+            'yield_high', 'harvest_window', 'net_profit', 'rainfall',
+            'temperature', 'humidity', 'soil_ph', 'soil_moisture',
+            'organic_carbon', 'fertilizer_kg_ha', 'ai_recommendations',
+            'risk_level', 'risk_reason', 'fallback_used', 'model_version',
+            'created_at'
         )
-        read_only_fields = (
-            'id', 'user_email',
-            'region', 'season',
-            'predicted_yield', 'yield_low', 'yield_high',
-            'harvest_window', 'net_profit',
-            'rainfall', 'temperature', 'humidity',
-            'ai_recommendations', 'risk_level', 'risk_reason',
-            'fallback_used', 'model_version', 'created_at',
-        )
+        read_only_fields = ('id', 'user_username', 'user_email', 'created_at')
