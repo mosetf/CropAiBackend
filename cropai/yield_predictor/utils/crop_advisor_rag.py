@@ -4,11 +4,13 @@ import torch
 import faiss
 import numpy as np
 import warnings
+import logging
 from typing import Dict, List, Any
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from sentence_transformers import SentenceTransformer
 
+logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore', message='Found missing adapter keys')
 
 
@@ -16,53 +18,72 @@ class CropAdvisorRAG:
     def __init__(self, model_path: str = None, rag_data_path: str = None):
         """
         Initialize the RAG-enabled crop advisor.
-        
+
         Args:
             model_path: Path to the fine-tuned LoRA adapter
             rag_data_path: Path to RAG data files (FAISS index, documents, embedder)
         """
         self.model_path = model_path
         self.rag_data_path = rag_data_path or os.path.join(os.path.dirname(__file__), "..", "..", "rag_data")
-        
+
         self.model = None
         self.tokenizer = None
         self.embedder = None
         self.faiss_index = None
         self.documents = None
-        
+        self.model_ready = False
+        self.rag_ready = False
+
         self._load_model()
         self._load_rag_components()
+        self.model_ready = self.model is not None
+        self.rag_ready = all([self.embedder, self.faiss_index, self.documents])
     
     def _load_model(self):
         """Load the fine-tuned Qwen model with LoRA adapters."""
         from transformers import AutoConfig
-        
+
         base_model_id = "unsloth/Qwen3.5-0.8B"
-        
+
+        logger.info(f"Loading base model: {base_model_id}")
         config = AutoConfig.from_pretrained(
-            base_model_id, 
+            base_model_id,
             trust_remote_code=True
         )
-        
+
         if hasattr(config, 'text_config'):
             for key, value in vars(config.text_config).items():
                 setattr(config, key, value)
-        
+
+        use_mps = torch.backends.mps.is_available()
+        dtype = torch.float16 if use_mps else torch.float32
+        device = "mps" if use_mps else "cpu"
+
+        logger.info(f"Loading on {device} with dtype={dtype}")
         base_model = AutoModelForCausalLM.from_pretrained(
             base_model_id,
             config=config,
-            device_map="auto",
-            torch_dtype=torch.float16 if torch.backends.mps.is_available() else torch.float32,
-            trust_remote_code=True
+            device_map={"": device},
+            torch_dtype=dtype,
+            trust_remote_code=True,
         )
-        
+
         if self.model_path and os.path.exists(self.model_path):
+            logger.info(f"Loading LoRA adapter from: {self.model_path}")
             self.model = PeftModel.from_pretrained(base_model, self.model_path)
+            logger.info("LoRA adapter loaded successfully")
         else:
+            logger.warning(
+                f"LoRA adapter path not found: {self.model_path}. "
+                f"Using base model without fine-tuning."
+            )
             self.model = base_model
-        
+
+        self.model.eval()  # Set to inference mode
+        logger.info(f"Model ready on {self.model.device}")
+
         self.tokenizer = AutoTokenizer.from_pretrained(
-            base_model_id, 
+            base_model_id,
             trust_remote_code=True
         )
         if self.tokenizer.pad_token is None:
@@ -74,16 +95,24 @@ class CropAdvisorRAG:
         if os.path.exists(embedder_path):
             with open(embedder_path, 'r') as f:
                 embedder_name = f.read().strip()
+            logger.info(f"Loading SentenceTransformer embedder: {embedder_name}")
             self.embedder = SentenceTransformer(embedder_name)
-        
+            logger.info("Embedder loaded successfully")
+        else:
+            logger.warning(f"Embedder config not found: {embedder_path}")
+
         index_path = os.path.join(self.rag_data_path, "rag_index.faiss")
         if os.path.exists(index_path):
             self.faiss_index = faiss.read_index(index_path)
-        
+            logger.info(f"FAISS index loaded from: {index_path}")
+
         docs_path = os.path.join(self.rag_data_path, "rag_docs.pkl")
         if os.path.exists(docs_path):
             with open(docs_path, 'rb') as f:
                 self.documents = pickle.load(f)
+            logger.info(f"RAG documents loaded: {len(self.documents)} docs")
+        else:
+            logger.warning(f"RAG docs not found: {docs_path}")
     
     def _retrieve_relevant_docs(self, query: str, top_k: int = 2) -> List[str]:
         """Retrieve relevant documents for the query."""
@@ -148,13 +177,17 @@ class CropAdvisorRAG:
     def get_recommendations(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get crop recommendations based on context.
-        
+        Uses RAG retrieval when available, otherwise generates directly from the model.
+
         Args:
             context: Dictionary with crop, location, yield, weather, soil data
-            
+
         Returns:
             Dictionary with recommendations, risk level, and reasoning
         """
+        if not self.model_ready:
+            raise RuntimeError("Model not loaded — cannot generate recommendations")
+
         crop = context.get("crop", "maize")
         location = context.get("location", "")
         yield_pred = context.get("yield", 0)
