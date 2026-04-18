@@ -1,10 +1,17 @@
+"""
+yield_predictor/serializers.py - Both form-based and DRF serializers
+"""
 from django import forms
+from rest_framework import serializers
 from datetime import date, timedelta
+from .models import YieldPrediction, CropModel, CROP_CHOICES
 from .services.prediction_service import LOCATION_COORDS
-from .models import CROP_CHOICES
+
+
+# FORM-BASED SERIALIZERS (for HTML forms)
+
 
 CROP_LIST = [(k, v) for k, v in CROP_CHOICES]
-
 LOCATION_CHOICES = [(loc, loc) for loc in sorted(LOCATION_COORDS.keys())]
 
 
@@ -100,8 +107,6 @@ class PredictionInputForm(forms.Form):
     def clean_planting_date(self):
         d = self.cleaned_data['planting_date']
         today = date.today()
-        # Allow planting dates up to 60 days in the past (already planted)
-        # and up to 180 days in the future (planning ahead)
         if d < today - timedelta(days=60):
             raise forms.ValidationError(
                 'Planting date is too far in the past (max 60 days ago).'
@@ -117,8 +122,6 @@ class PredictionInputForm(forms.Form):
         crop = cleaned.get('crop')
         location = cleaned.get('location')
 
-        # Warn if crop is not typically grown in this region
-        # (soft validation — warning only, not blocking)
         NON_ASAL_CROPS = {'tea', 'coffee'}
         ASAL_LOCATIONS = {
             'Turkana', 'Marsabit', 'Mandera', 'Wajir', 'Garissa',
@@ -134,11 +137,7 @@ class PredictionInputForm(forms.Form):
         return cleaned
 
     def to_service_dict(self) -> dict:
-        """
-        Converts cleaned form data into the exact kwargs expected by
-        prediction_service.run_prediction().
-        Called only after is_valid() returns True.
-        """
+        """Converts cleaned form data into kwargs for prediction_service.run_prediction()."""
         d = self.cleaned_data
         return {
             'crop':          d['crop'],
@@ -153,3 +152,49 @@ class PredictionInputForm(forms.Form):
             'market_price_override': d.get('market_price'),
             'labour_cost_override': d.get('labour_cost'),
         }
+
+# DRF SERIALIZERS (for REST API)
+
+class CropModelSerializer(serializers.ModelSerializer):
+    """Serializer for crop model metadata"""
+    class Meta:
+        model = CropModel
+        fields = ('id', 'crop', 'r2_score', 'mae', 'trained_at', 'is_active')
+        read_only_fields = ('id', 'trained_at')
+
+
+class YieldPredictionSerializer(serializers.ModelSerializer):
+    """Serializer for yield predictions.
+
+    Writable input fields (provided by the client):
+        crop, location, planting_date, soil_ph, soil_moisture,
+        organic_carbon, fertilizer_kg_ha
+
+    All other fields are server-computed outputs and are read-only.
+    """
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = YieldPrediction
+        fields = (
+            'id', 'user_email',
+            # --- client-supplied inputs ---
+            'crop', 'location', 'planting_date',
+            'soil_ph', 'soil_moisture', 'organic_carbon', 'fertilizer_kg_ha',
+            # --- server-computed outputs ---
+            'region', 'season',
+            'predicted_yield', 'yield_low', 'yield_high',
+            'harvest_window', 'net_profit',
+            'rainfall', 'temperature', 'humidity',
+            'ai_recommendations', 'risk_level', 'risk_reason',
+            'fallback_used', 'created_at',
+        )
+        read_only_fields = (
+            'id', 'user_email',
+            'region', 'season',
+            'predicted_yield', 'yield_low', 'yield_high',
+            'harvest_window', 'net_profit',
+            'rainfall', 'temperature', 'humidity',
+            'ai_recommendations', 'risk_level', 'risk_reason',
+            'fallback_used', 'created_at',
+        )

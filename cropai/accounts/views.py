@@ -1,0 +1,450 @@
+"""
+accounts/views.py - JWT authentication views with session tracking and remember me
+"""
+from rest_framework import status, serializers
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from django.contrib.auth import authenticate, get_user_model
+from django.utils import timezone
+from datetime import timedelta
+from user_agents import parse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+from .models import UserSession
+from .serializers import UserSerializer, UserSessionSerializer, LoginSerializer, RegisterSerializer
+
+User = get_user_model()
+
+
+def get_device_info(request):
+    """Extract device info from User-Agent header"""
+    user_agent_string = request.META.get('HTTP_USER_AGENT', '')
+    user_agent = parse(user_agent_string)
+    
+    return {
+        'device_name': f"{user_agent.device.brand} {user_agent.device.model}".strip() or "Unknown Device",
+        'device_type': user_agent.device.family or 'unknown',
+        'browser': f"{user_agent.browser.family} {user_agent.browser.version_string}".strip(),
+        'os': f"{user_agent.os.family} {user_agent.os.version_string}".strip(),
+        'ip_address': get_client_ip(request),
+    }
+
+
+def get_client_ip(request):
+    """Get client IP address from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='User Registration',
+    description='Register a new user account with email and password. Access token in response body, refresh token in httpOnly cookie.',
+    request=RegisterSerializer,
+    responses={
+        201: RegisterSerializer,
+        400: OpenApiResponse(description='Validation errors (duplicate email, password mismatch, etc)')
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    """
+    POST /api/v1/auth/register/
+    
+    Register a new user with email and password.
+    Returns:
+      - access token (in response body, in-memory only)
+      - refresh token (in httpOnly cookie)
+      - new user info
+    """
+    serializer = RegisterSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    email = serializer.validated_data['email']
+    
+    # Create new user (email is USERNAME_FIELD in CustomUser)
+    user = User.objects.create_user(
+        email=email,
+        password=serializer.validated_data['password'],
+        first_name=serializer.validated_data.get('first_name', ''),
+        last_name=serializer.validated_data.get('last_name', ''),
+    )
+    
+    # Generate tokens
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
+    
+    lifetime = timedelta(days=1)
+    expires_at = timezone.now() + lifetime
+    
+    device_info = get_device_info(request)
+    jti = str(refresh['jti'])
+    
+    UserSession.objects.create(
+        user=user,
+        jti=jti,
+        expires_at=expires_at,
+        **device_info,
+    )
+    
+    response = Response({
+        'access': access_token,
+        'user': UserSerializer(user).data,
+    }, status=status.HTTP_201_CREATED)
+    
+    response.set_cookie(
+        key='cropai_refresh',
+        value=refresh_token,
+        max_age=int(lifetime.total_seconds()),
+        httponly=True,
+        secure=False,
+        samesite='Lax',
+    )
+    
+    return response
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='User Login',
+    description='Authenticate user with email and password. Returns JWT tokens.',
+    request=LoginSerializer,
+    responses={200: UserSerializer}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    """
+    POST /api/v1/auth/login/
+    
+    Login with email and password.
+    Returns:
+      - access token (in response body, in-memory only)
+      - refresh token (in httpOnly cookie)
+      - current user info
+    """
+    serializer = LoginSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    email = serializer.validated_data.get('email')
+    password = serializer.validated_data.get('password')
+    remember_me = serializer.validated_data.get('remember_me', False)
+    
+    # Get user by email, then authenticate
+    try:
+        user = User.objects.get(email=email)
+        if not user.check_password(password):
+            return Response(
+                {'detail': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+    except User.DoesNotExist:
+        return Response(
+            {'detail': 'Invalid credentials'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    
+    # Generate tokens
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
+    
+    # Token lifetime based on remember_me
+    if remember_me:
+        lifetime = timedelta(days=30)
+    else:
+        lifetime = timedelta(days=1)
+    
+    # Refresh token expires at
+    expires_at = timezone.now() + lifetime
+    
+    # Get device info and create session
+    device_info = get_device_info(request)
+    jti = str(refresh['jti'])
+    
+    UserSession.objects.create(
+        user=user,
+        jti=jti,
+        expires_at=expires_at,
+        **device_info,
+    )
+    
+    response = Response({
+        'access': access_token,
+        'user': UserSerializer(user).data,
+    })
+    
+    # Set refresh token in httpOnly cookie
+    response.set_cookie(
+        key='cropai_refresh',
+        value=refresh_token,
+        max_age=int(lifetime.total_seconds()),
+        httponly=True,
+        secure=False,  # Set True in production with HTTPS
+        samesite='Lax',
+    )
+    
+    return response
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='User Logout',
+    description='Logout current user. Blacklists refresh token and deletes session record.',
+    responses=OpenApiTypes.OBJECT
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """
+    POST /api/v1/auth/logout/
+    
+    Logout endpoint. Blacklists refresh token and deletes session.
+    """
+    refresh_token = request.COOKIES.get('cropai_refresh')
+    
+    if refresh_token:
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            
+            # Delete session record
+            jti = str(token['jti'])
+            UserSession.objects.filter(jti=jti).delete()
+        except (TokenError, InvalidToken):
+            pass
+    
+    response = Response({'detail': 'Logged out successfully'})
+    response.delete_cookie('cropai_refresh')
+    return response
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='Refresh Access Token',
+    description='Refresh expired access token using refresh token from cookie. Rotates tokens for security.',
+    responses=OpenApiTypes.OBJECT
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refresh_view(request):
+    """
+    POST /api/v1/auth/refresh/
+    
+    Token refresh endpoint. Reads refresh token from cookie, validates it,
+    and rotates tokens (blacklists old, issues new).
+    """
+    refresh_token = request.COOKIES.get('cropai_refresh')
+    
+    if not refresh_token:
+        return Response(
+            {'detail': 'No refresh token provided'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    
+    try:
+        refresh = RefreshToken(refresh_token)
+        
+        # Get session and update last_active
+        jti = str(refresh['jti'])
+        session = UserSession.objects.get(jti=jti)
+        session.last_active = timezone.now()
+        session.save(update_fields=['last_active'])
+        
+        # Rotate tokens: blacklist old, issue new
+        access_token = str(refresh.access_token)
+        new_refresh = RefreshToken.for_user(session.user)
+        new_refresh_token = str(new_refresh)
+        
+        # Blacklist old refresh token
+        refresh.blacklist()
+        
+        # Create new session record with new JTI
+        new_jti = str(new_refresh['jti'])
+        old_session = session
+        old_session.delete()
+        
+        device_info = get_device_info(request)
+        expires_at = timezone.now() + timedelta(days=30 if old_session.expires_at > (timezone.now() + timedelta(days=7)) else 1)
+        
+        UserSession.objects.create(
+            user=session.user,
+            jti=new_jti,
+            expires_at=expires_at,
+            **device_info,
+        )
+        
+        response = Response({'access': access_token})
+        response.set_cookie(
+            key='cropai_refresh',
+            value=new_refresh_token,
+            max_age=int((expires_at - timezone.now()).total_seconds()),
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+        )
+        
+        return response
+    except (TokenError, InvalidToken):
+        return Response(
+            {'detail': 'Invalid refresh token'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    except UserSession.DoesNotExist:
+        return Response(
+            {'detail': 'Session not found'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='Get Current User',
+    description='Retrieve current authenticated user information.',
+    responses={
+        200: UserSerializer,
+        401: OpenApiResponse(description='Not authenticated')
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def current_user_view(request):
+    """
+    GET /api/v1/auth/user/
+    
+    Get current authenticated user info.
+    """
+    return Response(UserSerializer(request.user).data)
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='Manage User Sessions',
+    description='GET: List all active sessions for current user. DELETE: Revoke sessions (all others or specific by id).',
+    responses=OpenApiTypes.OBJECT
+)
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def sessions_view(request):
+    """
+    GET /api/v1/auth/sessions/
+    Lists all active sessions for current user.
+    
+    DELETE /api/v1/auth/sessions/
+    Revokes all other sessions (keeps current session active).
+    
+    DELETE /api/v1/auth/sessions/{id}/
+    Revokes a specific session by ID.
+    """
+    if request.method == 'GET':
+        sessions = UserSession.objects.filter(user=request.user)
+        serializer = UserSessionSerializer(
+            sessions,
+            many=True,
+            context={'request': request}
+        )
+        return Response(serializer.data)
+    
+    if request.method == 'DELETE':
+        session_id = request.query_params.get('id')
+        
+        if session_id:
+            # Revoke specific session
+            session = UserSession.objects.filter(
+                user=request.user,
+                id=session_id
+            ).first()
+            if not session:
+                return Response(
+                    {'detail': 'Session not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            session.delete()
+        else:
+            # Revoke all other sessions
+            refresh_token = request.COOKIES.get('cropai_refresh')
+            current_jti = None
+            
+            if refresh_token:
+                try:
+                    current_jti = str(RefreshToken(refresh_token)['jti'])
+                except:
+                    pass
+            
+            UserSession.objects.filter(user=request.user).exclude(
+                jti=current_jti
+            ).delete()
+        
+        return Response({'detail': 'Session(s) revoked'})
+
+
+@extend_schema(
+    tags=['User Profile'],
+    summary='Get/Update User Profile',
+    description='GET: Retrieve full profile of authenticated user. PATCH/PUT: Update user profile details.',
+    request=serializers.Serializer(),
+    responses={200: 'UserDetailSerializer'}
+)
+@api_view(['GET', 'PATCH', 'PUT'])
+@permission_classes([IsAuthenticated])
+def user_profile_view(request):
+    """
+    GET /api/v1/auth/profile/
+    - Returns complete user profile with all details for UI display.
+    
+    PATCH/PUT /api/v1/auth/profile/
+    - Update user profile details. All fields except verified flags are updatable.
+    """
+    from .serializers import UserDetailSerializer, UserProfileSerializer
+    
+    if request.method == 'GET':
+        serializer = UserDetailSerializer(request.user)
+        return Response(serializer.data)
+    
+    elif request.method in ['PATCH', 'PUT']:
+        profile = request.user.profile
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+@extend_schema(
+    tags=['User Profile'],
+    summary='Update User Basic Info',
+    description='Update user first name and last name.',
+    request=serializers.Serializer(),
+    responses={200: 'UserSerializer'}
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def user_basic_info_view(request):
+    """
+    PATCH /api/v1/auth/user/basic/
+    
+    Update basic user info (first_name, last_name).
+    """
+    user = request.user
+    
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+    
+    if first_name is not None:
+        user.first_name = first_name
+    if last_name is not None:
+        user.last_name = last_name
+    
+    user.save()
+    
+    from .serializers import UserSerializer
+    serializer = UserSerializer(user)
+    return Response(serializer.data)
