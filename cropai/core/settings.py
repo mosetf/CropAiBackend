@@ -22,13 +22,18 @@ ALLOWED_HOSTS = config(
 )
 
 # MODEL & DATA DIRECTORIES
-MODEL_DIR = BASE_DIR.parent / 'models'
-RAG_DATA_DIR = BASE_DIR.parent / 'rag_data'
-QWEN_MODEL_PATH = BASE_DIR.parent / 'qwen35_cropai_lora_final'
+# These paths are relative to BASE_DIR (cropai/) where the model files live
+MODEL_DIR = BASE_DIR / 'models'
+RAG_DATA_DIR = BASE_DIR / 'rag_data'
+QWEN_MODEL_PATH = BASE_DIR / 'qwen35_cropai_lora_final'
 
 FORECAST_URL = config('OPENWEATHER_FORECAST_URL', default='')
 API_KEY = config('API_KEY', default='')
 BASE_URL = config('BASE_URL', default='http://localhost:8000')
+
+# OLLAMA (local LLM via Docker)
+OLLAMA_URL = config('OLLAMA_URL', default='')
+OLLAMA_MODEL = config('OLLAMA_MODEL', default='qwen2.5:0.5b')
 
 
 # STATIC & MEDIA FILES
