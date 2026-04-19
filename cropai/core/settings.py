@@ -79,12 +79,12 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 # URL CONFIGURATION
 ROOT_URLCONF = 'core.urls'
 
-# TEMPLATES (minimal config - no HTML templates served)
+# TEMPLATES
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],
-        'APP_DIRS': False,
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
