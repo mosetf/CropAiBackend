@@ -10,43 +10,32 @@ class YieldPredictorConfig(AppConfig):
 
     def ready(self):
         """
-        Preload models at Django startup.
-        Priority: Ollama (Docker) > Local Qwen RAG > XGBoost only.
+        Initialize services at Django startup.
+        Uses OpenRouter (Qwen 3 Next 80B) for recommendations.
         """
         import threading
 
-        def _preload_models():
+        def _initialize_services():
             try:
-                # Preload XGBoost models
                 from .utils.model_loader import get_model, get_season_encoder
                 logger.info("Warming up XGBoost model cache…")
                 try:
                     get_model('maize')
                     get_season_encoder()
-                    logger.info("XGBoost models loaded successfully.")
+                    logger.info("✓ XGBoost models loaded successfully.")
                 except Exception as e:
                     logger.warning(f"XGBoost model preload warning: {e}")
 
-                # Try Ollama first (Docker container)
-                from .services.rag_service import _get_ollama_service, get_model_status
-                ollama = _get_ollama_service()
-                if ollama and ollama.is_ready:
-                    logger.info(f"Ollama ready with model: {ollama.model}")
-                else:
-                    logger.info("Ollama not available. Will use rule-based recommendations.")
-
-                # Don't try to load the local Qwen model — it segfaults on macOS.
-                # On Linux with GPU, uncomment the block below:
-                # from .services.rag_service import get_advisor
-                # advisor = get_advisor()
-                # if advisor.model_ready:
-                #     logger.info(f"Local Qwen model loaded on {advisor.model.device}")
-
+                from .services.rag_service import get_model_status
                 status = get_model_status()
-                logger.info(f"Model status: {status}")
+                if status.get('is_ready'):
+                    logger.info(f"✓ OpenRouter service ready: {status.get('model')}")
+                else:
+                    logger.warning(f"⚠ OpenRouter service not available: {status.get('error', 'Unknown error')}")
+                    logger.warning("Ensure OPENROUTER_API_KEY environment variable is set.")
 
             except Exception as e:
-                logger.error(f"Model preload failed: {e}. Rule-based fallback will be used.")
+                logger.error(f"Service initialization failed: {e}")
 
-        t = threading.Thread(target=_preload_models, daemon=True)
+        t = threading.Thread(target=_initialize_services, daemon=True)
         t.start()
