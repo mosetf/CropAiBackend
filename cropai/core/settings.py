@@ -35,6 +35,9 @@ BASE_URL = config('BASE_URL', default='http://localhost:8000')
 OLLAMA_URL = config('OLLAMA_URL', default='')
 OLLAMA_MODEL = config('OLLAMA_MODEL', default='qwen2.5:0.5b')
 
+# OPENROUTER API (Qwen 3 Next - cloud-hosted, lightweight, free tier)
+OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
+OPENROUTER_MODEL = config('OPENROUTER_MODEL', default='qwen/qwen3-next-80b-a3b-instruct:free')
 
 # STATIC & MEDIA FILES
 STATIC_URL = '/static/'
