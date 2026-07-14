@@ -1,16 +1,36 @@
+
+# Internal docs / deployment details — keep local, do not commit
+API_DOCUMENTATION.md
+PROFILE_ENDPOINTS_DOCUMENTATION.md
+DEPLOYMENT_GUIDE.md
+.env.production.example
+
+# Model artifacts and trained weights
+cropai/qwen35_cropai_lora_final/
+cropai/rag_data/
+cropai/models/
+deprecated/
+
+# Local private notes
+private-notes/
+
+# Django / Python
 venv/
-.env
-__pycache__/
 *.pyc
-*.pyo
-*.pyd
+__pycache__/
 *.log
 *.sqlite3
 *.db
 *.bak
-media/
 staticfiles/
-migrations/
-.DS_Store
+media/
 logs/
-docs/
+.DS_Store
+.env
+.venv
+env/
+ENV/
+.idea/
+.vscode/
+*.swp
+*.swo
